@@ -15,6 +15,7 @@
         }
     },
     "require": {
-        "league/csv": "^8.2"
+        "league/csv": "^8.2",
+        "vlucas/phpdotenv": "^2.4"
     }
 }

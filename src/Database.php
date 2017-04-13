@@ -7,22 +7,31 @@ require_once 'config.php';
 class Database
 {
     private static $instance = null;
+    private $host, $database, $username, $password, $driver, $attributes;
     private $pdo = null;
 
-    private function __construct()
+    private function __construct($host, $database, $username, $password, $driver)
     {
-        $this->pdo = 'pdo';
+        $this->host = $host;
+        $this->database = $database;
+        $this->username = $username;
+        $this->password = $password;
+        $this->driver = $driver;
+        $this->attributes = [
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
+        ];
+        $this->pdo = new PDO("{$this->driver}:host={$this->host};dbname={$this->database};", $this->username, $this->password, $this->attributes);
     }
 
-    public static function getConnection()
+    public static function getConnection($host, $database, $username, $password, $driver = 'mysql')
     {
         if (null === static::$instance) {
-            return static::$instance = (new self());
+            return static::$instance = (new self($host, $database, $username, $password, $driver));
         }
         return self::$instance;
     }
 
-    public function &getPDO()
+    public function getPDO()
     {
         return $this->pdo;
     }
