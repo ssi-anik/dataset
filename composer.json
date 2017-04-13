@@ -1,0 +1,20 @@
+{
+    "name": "anik/dataset",
+    "description": "Dataset is a php package for importing csv into your database table",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Syed Sirajul Islam Anik",
+            "email": "sirajul.islam.anik@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Dataset\\": "src/"
+        }
+    },
+    "require": {
+        "league/csv": "^8.2"
+    }
+}
