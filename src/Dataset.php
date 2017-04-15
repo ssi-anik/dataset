@@ -98,6 +98,10 @@ abstract class Dataset
 		if ( empty(trim($this->source)) ) {
 			$this->path = dirname(( new \ReflectionClass(static::class) )->getFileName());
 			$this->source = $this->path . "/{$this->morphClassName()}.csv";
+			// check if the file exists, existence moved from below to here, cause realpath checks the file existence
+			if ( !file_exists($this->source) ) {
+				throw new DatasetException("`{$this->source}` does not exist.");
+			}
 		} else {
 			// a source is defined,
 			// check the realpath of the source, false if does not exist
@@ -121,10 +125,6 @@ abstract class Dataset
 			$this->path = dirname($this->source);
 		}
 
-		// check if the file exists
-		if ( !file_exists($this->source) ) {
-			throw new DatasetException("`{$this->source}` does not exist.");
-		}
 		// file exists, set the reader
 		$this->setReader();
 
