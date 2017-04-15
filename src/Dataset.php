@@ -94,17 +94,37 @@ abstract class Dataset
 	}
 
 	public function import () {
-		// check if the path is empty
+		// check if the source is empty
 		if ( empty(trim($this->source)) ) {
-			$this->path = dirname(static::class);
+			$this->path = dirname(( new \ReflectionClass(static::class) )->getFileName());
 			$this->source = $this->path . "/{$this->morphClassName()}.csv";
+		} else {
+			// a source is defined,
+			// check the realpath of the source, false if does not exist
+			// running php script from relative location and relative source will collide.
+			$source = realpath($this->source);
+			if ( !$source ) {
+				// resolve the path via dir of the file
+				$source = realpath(__DIR__ . "/" . $this->source);
+				if ( !$source ) {
+					// file doesn't even exist, throw exception
+					throw new DatasetException("No file exists on `{$this->source}`");
+				} else {
+					// exists, add to source
+					$this->source = $source;
+				}
+			} else {
+				// script ran from current location, relative path resolved.
+				$this->source = $source;
+			}
+			// no exception was raised, get the path of the source.
+			$this->path = dirname($this->source);
 		}
 
 		// check if the file exists
 		if ( !file_exists($this->source) ) {
 			throw new DatasetException("`{$this->source}` does not exist.");
 		}
-
 		// file exists, set the reader
 		$this->setReader();
 
