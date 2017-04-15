@@ -16,6 +16,9 @@ abstract class Dataset
 	protected $escape = '\\';
 	protected $mapper = [];
 	private $reader = null;
+	protected $stopOnError = false;
+	protected $headerAsField = false;
+	protected $constantFields = [];
 
 	/*
 	 * DATABASE RELATED PROPERTIES
@@ -33,20 +36,32 @@ abstract class Dataset
 	/*
 	 * CSV RELATED METHODS
 	 **/
+	public function getConstantFields () {
+		return (array) $this->constantFields;
+	}
+
 	public function getPath () {
-		return $this->path;
+		return (string) $this->path;
 	}
 
 	public function getSource () {
-		return $this->source;
+		return (string) $this->source;
 	}
 
 	public function getDelimiter () {
-		return $this->delimiter;
+		return (string) $this->delimiter;
 	}
 
 	public function getMapper () {
-		return $this->mapper;
+		return (array) $this->mapper;
+	}
+
+	public function getHeaderAsField () {
+		return (bool) $this->headerAsField;
+	}
+
+	public function getExcludeHeader () {
+		return (bool) $this->excludeHeader;
 	}
 
 	private function getReader () {
@@ -54,11 +69,11 @@ abstract class Dataset
 	}
 
 	public function getEnclosure () {
-		return $this->enclosure;
+		return (string) $this->enclosure;
 	}
 
 	public function getEscape () {
-		return $this->escape;
+		return (string) $this->escape;
 	}
 
 	private function setReader () {
@@ -68,6 +83,10 @@ abstract class Dataset
 					 ->setEscape($this->getEscape());
 
 		return $this;
+	}
+
+	public function getStopOnError () {
+		return (bool) $this->stopOnError;
 	}
 
 	/*
@@ -91,6 +110,13 @@ abstract class Dataset
 		} else {
 			return false;
 		}
+	}
+
+	/*
+	 * Helper methods
+	 **/
+	private function isMultidimensionalArray ($array) {
+		return ( array_values($array) !== $array );
 	}
 
 	public function import () {
@@ -138,7 +164,48 @@ abstract class Dataset
 			throw new DatasetException("No table exists named `{$this->table}`");
 		}
 
-		return $this->getReader()
-					->getDelimiter();
+		// check if the header should be excluded & header should be used as DB table column. Throw exception in this case.
+		if ( $this->getExcludeHeader() && $this->getHeaderAsField() ) {
+			throw new DatasetException("Header was excluded & used as table field.");
+		}
+
+		// check if header is not present and no mapper is available, throw exception in this case.
+		if ( false === $this->getHeaderAsField() && empty($this->getMapper()) ) {
+			throw new DatasetException("Mapper must be present in absence of header.");
+		}
+
+		$columns = [];
+		// check which columns should be taken
+		if ( $this->getHeaderAsField() ) {
+			$columns = $this->getReader()
+							->fetchOne();
+		} else {
+			$columns = $this->getMapper();
+		}
+		// if the columns are empty, in case got from the csv
+		if ( empty($columns) ) {
+			throw new DatasetException("Headers are not available.");
+		}
+
+		// get the columns user wants to insert.
+		$tableFields = [];
+		if ( $this->isMultidimensionalArray($columns) ) {
+			// STRUCTURE: ['csv_column' => 'table_column', 'csv_column2' => false, 'csv_column3' => function($row){ return 'result' }];
+			// 1. ['user_name' => 'name', 'user_email' => 'email'];
+			// 2. ['username' => 'name', 'password' => function($row){ return hash($row['password']); }]
+			// 3. ['username' => 'name', 'password' => false, 'email' => 'email', 'first_name' => function($row){ return $row['first_name'] . " " . $row['last_name'];}, 'last_name' => false];
+			foreach ( $columns as $csvColumn => $tableColumn ) {
+				if ( is_numeric($csvColumn) ) {
+					$tableFields[$tableColumn] = $tableColumn;
+				} elseif ( $tableColumn ) {
+					$tableFields[$csvColumn] = $tableColumn;
+				}
+			}
+		} else {
+			// 1. ['name', 'first_name', 'last_name', 'email'];
+			$tableFields = $columns;
+		}
+
+		return $tableFields;
 	}
 }
