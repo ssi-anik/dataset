@@ -5,6 +5,7 @@ use League\Csv\Reader;
 
 abstract class Dataset
 {
+	use SQLHelper;
 	/*
 	 * CSV RELATED PROPERTIES
 	 **/
@@ -100,18 +101,6 @@ abstract class Dataset
 		return $this->inflector->pluralize($underScored);
 	}
 
-	private function checkIfTableExists ($tableName) {
-		$pdo = $this->database->getPDO();
-		$query = "SHOW TABLES LIKE ?";
-		$statement = $pdo->prepare($query);
-		$statement->execute([ $tableName ]);
-		if ( $statement->fetch() ) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-
 	/*
 	 * Helper methods
 	 **/
@@ -174,6 +163,17 @@ abstract class Dataset
 			throw new DatasetException("Mapper must be present in absence of header.");
 		}
 
+		// cannot use header as field and mapper
+		if ( $this->getHeaderAsField() && !empty($this->getMapper()) ) {
+			throw new DatasetException("Header and Mapper cannot be used together.");
+		}
+
+		// check if constant fields exists, and not associative array
+		if ( !empty($this->getConstantFields()) && !$this->isMultidimensionalArray($this->getConstantFields()) ) {
+			throw new DatasetException("Constant fields must be associative.");
+		}
+
+		// columns variable is actually the mapper or header
 		$columns = [];
 		// check which columns should be taken
 		if ( $this->getHeaderAsField() ) {
@@ -187,7 +187,7 @@ abstract class Dataset
 			throw new DatasetException("Headers are not available.");
 		}
 
-		// get the columns user wants to insert.
+		// get the columns user wants to insert into the table.
 		$tableFields = [];
 		if ( $this->isMultidimensionalArray($columns) ) {
 			// STRUCTURE: ['csv_column' => 'table_column', 'csv_column2' => false, 'csv_column3' => function($row){ return 'result' }];
@@ -203,9 +203,59 @@ abstract class Dataset
 			}
 		} else {
 			// 1. ['name', 'first_name', 'last_name', 'email'];
-			$tableFields = $columns;
+			$tableFields = array_combine($columns, $columns);
 		}
 
-		return $tableFields;
+		// merge the constant fields with the dynamic fields
+		$insertAble = array_merge($tableFields, $this->getConstantFields());
+
+		$this->query = $this->queryBuilder($this->table, $insertAble);
+		$statement = $this->database->getPDO()
+									->prepare($this->query);
+
+		$pagination = 100;
+		$current = 0;
+		$headerOffset = $this->getExcludeHeader() ? 1 : 0;
+		$shouldContinue = true;
+		do {
+			$totalOffset = $current * $pagination + $headerOffset;
+			$resultSet = $this->getReader()
+							  ->setOffset($totalOffset)
+							  ->setLimit($pagination)
+							  ->fetchAssoc(array_keys($tableFields));
+			// increment the current page to +1
+			++$current;
+
+			// should grab next chunk if the found data set greater than the pagination value
+			// fetchAssoc returns an iterator
+			if ( iterator_count($resultSet) < $pagination ) {
+				$shouldContinue = false;
+			}
+
+			// loop over the result set
+			$onCurrentPageResultCount = 1;
+			foreach ( $resultSet as $result ) {
+				// get the fields those are required to be taken from
+				$matchedKeys = array_intersect_key(array_keys($tableFields), array_keys($result));
+				$values = [];
+				foreach ( $matchedKeys as $key ) {
+					// transform values if required
+					if ( is_callable($tableFields[$key]) ) {
+						$values[] = call_user_func($tableFields[$key], ...[
+							$result,
+							( $onCurrentPageResultCount + $totalOffset ),
+						]);
+					} else {
+						$values[] = $result[$key];
+					}
+				}
+				++$onCurrentPageResultCount;
+				$values = array_merge($values, array_values($this->getConstantFields()));
+				// TODO: csv_column = ['table_column' => transformer]
+				$statement->execute($values);
+			}
+		} while ( $shouldContinue );
+
+		return "Data inserted successfully.";
 	}
 }
