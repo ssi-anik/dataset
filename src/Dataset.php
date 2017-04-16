@@ -92,8 +92,8 @@ abstract class Dataset
     {
         $this->reader = Reader::createFromPath($this->getSource());
         $this->reader->setDelimiter($this->getDelimiter())
-            ->setEnclosure($this->getEnclosure())
-            ->setEscape($this->getEscape());
+                     ->setEnclosure($this->getEnclosure())
+                     ->setEscape($this->getEscape());
 
         return $this;
     }
@@ -184,8 +184,7 @@ abstract class Dataset
         if (!empty($this->getConstantFields()) && !$this->isMultidimensionalArray($this->getConstantFields())) {
             throw new DatasetException("Constant fields must be associative.");
         }
-
-
+        
         // file exists, set the reader
         $this->setReader();
 
@@ -194,7 +193,7 @@ abstract class Dataset
         // check which columns should be taken
         if ($this->getHeaderAsTableField()) {
             $columns = $this->getReader()
-                ->fetchOne();
+                            ->fetchOne();
         } else {
             $columns = $this->getMapper();
         }
@@ -227,7 +226,7 @@ abstract class Dataset
 
         $this->query = $this->queryBuilder($this->table, $insertAble);
         $statement = $this->database->getPDO()
-            ->prepare($this->query);
+                                    ->prepare($this->query);
 
         $pagination = 100;
         $current = 0;
@@ -236,9 +235,9 @@ abstract class Dataset
         do {
             $totalOffset = $current * $pagination + $headerOffset;
             $resultSet = $this->getReader()
-                ->setOffset($totalOffset)
-                ->setLimit($pagination)
-                ->fetchAssoc(array_keys($tableFields));
+                              ->setOffset($totalOffset)
+                              ->setLimit($pagination)
+                              ->fetchAssoc(array_keys($tableFields));
             // increment the current page to +1
             ++$current;
 
