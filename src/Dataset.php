@@ -139,9 +139,6 @@ abstract class Dataset
 			$this->path = dirname($this->source);
 		}
 
-		// file exists, set the reader
-		$this->setReader();
-
 		// check if table name exists, or generate
 		if ( empty($this->table) ) {
 			$this->table = $this->morphClassName();
@@ -171,6 +168,10 @@ abstract class Dataset
 		if ( !empty($this->getConstantFields()) && !$this->isMultidimensionalArray($this->getConstantFields()) ) {
 			throw new DatasetException("Constant fields must be associative.");
 		}
+
+
+        // file exists, set the reader
+        $this->setReader();
 
 		// columns variable is actually the mapper or header
 		$columns = [];
