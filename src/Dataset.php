@@ -5,21 +5,23 @@ use League\Csv\Reader;
 
 abstract class Dataset
 {
-    use SQLHelper;
+    use SQLHelper, Helper;
+
     /*
      * CSV RELATED PROPERTIES
      **/
-    private $path = '';
     protected $source = '';
     protected $excludeHeader = false;
     protected $delimiter = ',';
     protected $enclosure = '"';
     protected $escape = '\\';
     protected $mapper = [];
-    private $reader = null;
     protected $stopOnError = false;
     protected $headerAsTableField = false;
     protected $constantFields = [];
+    protected $excludedFields = [];
+    private $path = '';
+    private $reader = null;
 
     /*
      * DATABASE RELATED PROPERTIES
@@ -68,6 +70,11 @@ abstract class Dataset
         return (bool)$this->headerAsTableField;
     }
 
+    protected function getExcludeFields()
+    {
+        return (array)$this->excludedFields;
+    }
+
     public function getExcludeHeader()
     {
         return (bool)$this->excludeHeader;
@@ -101,25 +108,6 @@ abstract class Dataset
     public function getStopOnError()
     {
         return (bool)$this->stopOnError;
-    }
-
-    /*
-     * DATABASE RELATED METHODS
-     **/
-    protected function morphClassName()
-    {
-        $extendedClass = get_class($this);
-        $underScored = $this->inflector->underscore($extendedClass);
-
-        return $this->inflector->pluralize($underScored);
-    }
-
-    /*
-     * Helper methods
-     **/
-    private function isMultidimensionalArray($array)
-    {
-        return (array_values($array) !== $array);
     }
 
     public function import()
@@ -184,43 +172,50 @@ abstract class Dataset
         if (!empty($this->getConstantFields()) && !$this->isMultidimensionalArray($this->getConstantFields())) {
             throw new DatasetException("Constant fields must be associative.");
         }
-        
+
         // file exists, set the reader
         $this->setReader();
 
-        // columns variable is actually the mapper or header
-        $columns = [];
-        // check which columns should be taken
+        // map variable is actually the mapper or header
+        $map = [];
+        // check which map should be taken
         if ($this->getHeaderAsTableField()) {
-            $columns = $this->getReader()
-                            ->fetchOne();
+            $map = $this->getReader()
+                        ->fetchOne();
         } else {
-            $columns = $this->getMapper();
+            $map = $this->getMapper();
         }
-        // if the columns are empty, in case got from the csv
-        if (empty($columns)) {
+        // if the map are empty/csv file is empty
+        if (empty($map)) {
             throw new DatasetException("Headers are not available.");
         }
 
-        // get the columns user wants to insert into the table.
+        // get the map user wants to insert into the table.
         $tableFields = [];
-        if ($this->isMultidimensionalArray($columns)) {
-            // STRUCTURE: ['csv_column' => 'table_column', 'csv_column2' => false, 'csv_column3' => function($row){ return 'result' }];
-            // 1. ['user_name' => 'name', 'user_email' => 'email'];
-            // 2. ['username' => 'name', 'password' => function($row){ return hash($row['password']); }]
-            // 3. ['username' => 'name', 'password' => false, 'email' => 'email', 'first_name' => function($row){ return $row['first_name'] . " " . $row['last_name'];}, 'last_name' => false];
-            foreach ($columns as $csvColumn => $tableColumn) {
-                if (is_numeric($csvColumn)) {
-                    $tableFields[$tableColumn] = $tableColumn;
-                } elseif ($tableColumn) {
-                    $tableFields[$csvColumn] = $tableColumn;
-                }
+        // STRUCTURE: ['csv_column' => 'table_column', 'csv_column2' => false, 'csv_column3' => ['table_column3', function($row){ return 'result' }];
+        // 1. ['user_name' => 'name', 'user_email' => 'email'];
+        // 2. ['username' => 'name', 'password' => function($row){ return hash($row['password']); }]
+        // 3. ['username' => 'name', 'password' => false, 'email', 'first_name' => function($row){ return $row['first_name'] . " " . $row['last_name'];}, 'last_name' => false];
+        // 4. ['name', 'first_name', 'last_name', 'email'];
+        // TABLE FIELDS VARIABLE STRUCTURE
+        // [ 'csv_column' => ['table_column', null], 'csv_column3' => ['table_column3', function($row){ return 'result'; }]];
+        foreach ($map as $csvColumn => $value) {
+            // Before set the key on variable, trim the column name
+            if (is_string($value)) {
+                $value = trim($value);
             }
-        } else {
-            // 1. ['name', 'first_name', 'last_name', 'email'];
-            $tableFields = array_combine($columns, $columns);
+            if (is_numeric($csvColumn) && is_string($value)) { // "EXAMPLE: 3, email", "EXAMPLE 4: FULL ARRAY"
+                $tableFields[$value] = [$value, null];
+            } elseif (is_string($csvColumn) && is_string($value)) { // "EXAMPLE 3: username"
+                $tableFields[$csvColumn] = [$value, null];
+            } elseif (is_string($csvColumn) && is_array($value)) { // STRUCTURE: csv_column2
+                $tableFields[$csvColumn] = $value;
+            } elseif (is_string($csvColumn) && false == $value) {
+                continue;
+            } else {
+                throw new DatasetException("Not a valid format for mapper.");
+            }
         }
-
         // merge the constant fields with the dynamic fields
         $insertAble = array_merge($tableFields, $this->getConstantFields());
 
