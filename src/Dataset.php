@@ -18,7 +18,7 @@ abstract class Dataset
 	protected $mapper = [];
 	private $reader = null;
 	protected $stopOnError = false;
-	protected $headerAsField = false;
+	protected $headerAsTableField = false;
 	protected $constantFields = [];
 
 	/*
@@ -57,8 +57,8 @@ abstract class Dataset
 		return (array) $this->mapper;
 	}
 
-	public function getHeaderAsField () {
-		return (bool) $this->headerAsField;
+	public function getHeaderAsTableField () {
+		return (bool) $this->headerAsTableField;
 	}
 
 	public function getExcludeHeader () {
@@ -93,7 +93,6 @@ abstract class Dataset
 	/*
 	 * DATABASE RELATED METHODS
 	 **/
-
 	protected function morphClassName () {
 		$extendedClass = get_class($this);
 		$underScored = $this->inflector->underscore($extendedClass);
@@ -154,17 +153,17 @@ abstract class Dataset
 		}
 
 		// check if the header should be excluded & header should be used as DB table column. Throw exception in this case.
-		if ( $this->getExcludeHeader() && $this->getHeaderAsField() ) {
+		if ( $this->getExcludeHeader() && $this->getHeaderAsTableField() ) {
 			throw new DatasetException("Header was excluded & used as table field.");
 		}
 
 		// check if header is not present and no mapper is available, throw exception in this case.
-		if ( false === $this->getHeaderAsField() && empty($this->getMapper()) ) {
+		if ( false === $this->getHeaderAsTableField() && empty($this->getMapper()) ) {
 			throw new DatasetException("Mapper must be present in absence of header.");
 		}
 
 		// cannot use header as field and mapper
-		if ( $this->getHeaderAsField() && !empty($this->getMapper()) ) {
+		if ( $this->getHeaderAsTableField() && !empty($this->getMapper()) ) {
 			throw new DatasetException("Header and Mapper cannot be used together.");
 		}
 
@@ -176,7 +175,7 @@ abstract class Dataset
 		// columns variable is actually the mapper or header
 		$columns = [];
 		// check which columns should be taken
-		if ( $this->getHeaderAsField() ) {
+		if ( $this->getHeaderAsTableField() ) {
 			$columns = $this->getReader()
 							->fetchOne();
 		} else {
