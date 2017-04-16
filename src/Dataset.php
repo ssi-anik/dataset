@@ -19,7 +19,7 @@ abstract class Dataset
     protected $stopOnError = false;
     protected $headerAsTableField = false;
     protected $constantFields = [];
-    protected $excludedFields = [];
+    protected $ignoreCsvColumns = [];
     private $path = '';
     private $reader = null;
 
@@ -70,9 +70,9 @@ abstract class Dataset
         return (bool)$this->headerAsTableField;
     }
 
-    protected function getExcludeFields()
+    protected function getIgnoreCsvColumns()
     {
-        return (array)$this->excludedFields;
+        return (array)$this->ignoreCsvColumns;
     }
 
     public function getExcludeHeader()
@@ -108,6 +108,11 @@ abstract class Dataset
     public function getStopOnError()
     {
         return (bool)$this->stopOnError;
+    }
+
+    private function csvColumnToTableFieldBuilder($key, $value, $storage)
+    {
+
     }
 
     public function import()
@@ -153,19 +158,9 @@ abstract class Dataset
             throw new DatasetException("No table exists named `{$this->table}`");
         }
 
-        // check if the header should be excluded & header should be used as DB table column. Throw exception in this case.
-        if ($this->getExcludeHeader() && $this->getHeaderAsTableField()) {
-            throw new DatasetException("Header was excluded & used as table field.");
-        }
-
         // check if header is not present and no mapper is available, throw exception in this case.
         if (false === $this->getHeaderAsTableField() && empty($this->getMapper())) {
             throw new DatasetException("Mapper must be present in absence of header.");
-        }
-
-        // cannot use header as field and mapper
-        if ($this->getHeaderAsTableField() && !empty($this->getMapper())) {
-            throw new DatasetException("Header and Mapper cannot be used together.");
         }
 
         // check if constant fields exists, and not associative array
@@ -176,22 +171,28 @@ abstract class Dataset
         // file exists, set the reader
         $this->setReader();
 
-        // map variable is actually the mapper or header
-        $map = [];
-        // check which map should be taken
+        // get the csv columns, inside the mapper, all the column name must be there
+        // regardless of the database table entry
+        $mapper = [];
+        // if the get header as table field is set, csv columns are those fields
         if ($this->getHeaderAsTableField()) {
-            $map = $this->getReader()
-                        ->fetchOne();
-        } else {
-            $map = $this->getMapper();
-        }
-        // if the map are empty/csv file is empty
-        if (empty($map)) {
-            throw new DatasetException("Headers are not available.");
+            $csvColumns = array_map('trim', $this->getReader()->fetchOne());
+            $mapper = array_combine($csvColumns, $csvColumns);
         }
 
-        // get the map user wants to insert into the table.
-        $tableFields = [];
+        // get the mapper by user
+        $userMapped = $this->getMapper();
+        if ($userMapped) {
+            $mapper = array_merge($mapper, $userMapped);
+        }
+
+        // check if any columns is said to ignore/won't insert into database
+        $ignoredColumns = $this->getIgnoreCsvColumns();
+        if ($ignoredColumns) {
+            $ignoredColumns = array_combine(array_values($ignoredColumns), array_fill(0, count($ignoredColumns), false));
+            $mapper = array_merge($mapper, $ignoredColumns);
+        }
+
         // STRUCTURE: ['csv_column' => 'table_column', 'csv_column2' => false, 'csv_column3' => ['table_column3', function($row){ return 'result' }];
         // 1. ['user_name' => 'name', 'user_email' => 'email'];
         // 2. ['username' => 'name', 'password' => function($row){ return hash($row['password']); }]
@@ -199,27 +200,51 @@ abstract class Dataset
         // 4. ['name', 'first_name', 'last_name', 'email'];
         // TABLE FIELDS VARIABLE STRUCTURE
         // [ 'csv_column' => ['table_column', null], 'csv_column3' => ['table_column3', function($row){ return 'result'; }]];
-        foreach ($map as $csvColumn => $value) {
+        foreach ($mapper as $csvColumn => $value) {
             // Before set the key on variable, trim the column name
             if (is_string($value)) {
                 $value = trim($value);
             }
             if (is_numeric($csvColumn) && is_string($value)) { // "EXAMPLE: 3, email", "EXAMPLE 4: FULL ARRAY"
-                $tableFields[$value] = [$value, null];
+                // in case, the column is available from header, and also from mapper,
+                // keep the header key, remove the mapper value. It's all the same. Because, it's having INTEGER
+                // INDEX means it's a one dimensional array
+                if (array_key_exists($value, $mapper)) {
+                    unset($mapper[$csvColumn]);
+                } else {
+                    $mapper[$value] = [$value, null];
+                }
             } elseif (is_string($csvColumn) && is_string($value)) { // "EXAMPLE 3: username"
-                $tableFields[$csvColumn] = [$value, null];
-            } elseif (is_string($csvColumn) && is_array($value)) { // STRUCTURE: csv_column2
-                $tableFields[$csvColumn] = $value;
-            } elseif (is_string($csvColumn) && false == $value) {
+                $mapper[$csvColumn] = [$value, null];
+            } elseif (is_string($csvColumn) && is_array($value)) { // "STRUCTURE: csv_column2"
+                $mapper[$csvColumn] = $value;
+            } elseif (is_string($csvColumn) && false === $value) { // "EXAMPLE: 3, password"
                 continue;
             } else {
-                throw new DatasetException("Not a valid format for mapper.");
+                $message = sprintf('Invalid `%s` on %s::$mapper.', is_string($csvColumn) ? $csvColumn : (string)$value, get_class($this));
+                throw new DatasetException($message);
             }
         }
-        // merge the constant fields with the dynamic fields
-        $insertAble = array_merge($tableFields, $this->getConstantFields());
 
-        $this->query = $this->queryBuilder($this->table, $insertAble);
+        // EXCEPTIONS: ['csv_field' => false, 'csv_field2' => false]
+        if (empty($mapper)) {
+            throw new DatasetException("Nothing to import from CSV.");
+        }
+        // insertable table fields are going to be the fields that has
+        // 1. filter the values if any $mapper value has NOT FALSE values
+        $filteredMap = array_filter($mapper);
+        // 2. get the database table fields for those csv columns
+        $tableColumns = array_map(function ($row) {
+            return $row[0];
+        }, $filteredMap);
+        // 3. Merge those with the constant field values
+        $insertAbleTableFields = array_merge(array_values($tableColumns), array_keys($this->getConstantFields()));
+        // check if the table has fields
+        $this->checkIfTableColumnsExist($insertAbleTableFields);
+        // build the query with those values
+        $this->query = $this->queryBuilder($insertAbleTableFields);
+
+        // prepare the pdo statement
         $statement = $this->database->getPDO()
                                     ->prepare($this->query);
 
@@ -232,26 +257,29 @@ abstract class Dataset
             $resultSet = $this->getReader()
                               ->setOffset($totalOffset)
                               ->setLimit($pagination)
-                              ->fetchAssoc(array_keys($tableFields));
+                              ->fetchAssoc(array_keys($mapper));
             // increment the current page to +1
             ++$current;
 
             // should grab next chunk if the found data set greater than the pagination value
             // fetchAssoc returns an iterator
-            if (iterator_count($resultSet) < $pagination) {
-                $shouldContinue = false;
+            $iterator_item_count = iterator_count($resultSet);
+            if (0 === $iterator_item_count) {
+                break;
             }
+            echo sprintf("Loaded %5d%s %d rows.\n", $current, $this->inflector->ordinal($current), $iterator_item_count);
 
             // loop over the result set
             $onCurrentPageResultCount = 1;
             foreach ($resultSet as $result) {
                 // get the fields those are required to be taken from
-                $matchedKeys = array_intersect_key(array_keys($tableFields), array_keys($result));
+                $matchedKeys = array_intersect_key(array_keys($filteredMap), array_keys($result));
                 $values = [];
                 foreach ($matchedKeys as $key) {
+                    // ['csv_column' => ['table_column', 'transformer()']]; @ position 1
                     // transform values if required
-                    if (is_callable($tableFields[$key])) {
-                        $values[] = call_user_func($tableFields[$key], ...[
+                    if (is_callable($mapper[$key][1])) {
+                        $values[] = call_user_func($mapper[$key][1], ...[
                             $result,
                             ($onCurrentPageResultCount + $totalOffset),
                         ]);
@@ -261,11 +289,10 @@ abstract class Dataset
                 }
                 ++$onCurrentPageResultCount;
                 $values = array_merge($values, array_values($this->getConstantFields()));
-                // TODO: csv_column = ['table_column' => transformer]
                 $statement->execute($values);
             }
         } while ($shouldContinue);
-
-        return "Data inserted successfully.";
+        echo "Data inserted successfully." . PHP_EOL;
+        return true;
     }
 }
