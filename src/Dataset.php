@@ -16,7 +16,6 @@ abstract class Dataset
     protected $enclosure = '"';
     protected $escape = '\\';
     protected $mapper = [];
-    protected $stopOnError = false;
     protected $headerAsTableField = false;
     protected $constantFields = [];
     protected $ignoreCsvColumns = [];
@@ -103,16 +102,6 @@ abstract class Dataset
                      ->setEscape($this->getEscape());
 
         return $this;
-    }
-
-    public function getStopOnError()
-    {
-        return (bool)$this->stopOnError;
-    }
-
-    private function csvColumnToTableFieldBuilder($key, $value, $storage)
-    {
-
     }
 
     public function import()
@@ -270,11 +259,13 @@ abstract class Dataset
             echo sprintf("Loaded %5d%s %d rows.\n", $current, $this->inflector->ordinal($current), $iterator_item_count);
 
             // loop over the result set
-            $onCurrentPageResultCount = 1;
+            $onCurrentPageResultCount = 0;
+            $errorOccurred = false;
             foreach ($resultSet as $result) {
                 // get the fields those are required to be taken from
                 $matchedKeys = array_intersect_key(array_keys($filteredMap), array_keys($result));
                 $values = [];
+                ++$onCurrentPageResultCount;
                 foreach ($matchedKeys as $key) {
                     // ['csv_column' => ['table_column', 'transformer()']]; @ position 1
                     // transform values if required
@@ -287,12 +278,19 @@ abstract class Dataset
                         $values[] = $result[$key];
                     }
                 }
-                ++$onCurrentPageResultCount;
                 $values = array_merge($values, array_values($this->getConstantFields()));
-                $statement->execute($values);
+                if (!$statement->execute($values)) {
+                    echo sprintf("Error: %s\n", $statement->errorInfo()[2]);
+                    echo sprintf("ROW: %d\n", ($totalOffset + $onCurrentPageResultCount));
+                    echo sprintf("Data: %s\n", json_encode(array_combine($insertAbleTableFields, $values)));
+                    $errorOccurred = true;
+                    break;
+                }
+            }
+            if ($errorOccurred) {
+                break;
             }
         } while ($shouldContinue);
-        echo "Data inserted successfully." . PHP_EOL;
         return true;
     }
 }
