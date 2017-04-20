@@ -160,28 +160,29 @@ abstract class Dataset
         // file exists, set the reader
         $this->setReader();
 
-        // get the csv columns, inside the mapper, all the column name must be there
+        // get the csv columns, inside the columns, all the column name must be there
         // regardless of the database table entry
-        $mapper = [];
+        $columns = [];
         // if the get header as table field is set, csv columns are those fields
         if ($this->getHeaderAsTableField()) {
             $csvColumns = array_map('trim', $this->getReader()->fetchOne());
-            $mapper = array_combine($csvColumns, $csvColumns);
+            $columns = array_combine($csvColumns, $csvColumns);
         }
 
         // get the mapper by user
         $userMapped = $this->getMapper();
         if ($userMapped) {
-            $mapper = array_merge($mapper, $userMapped);
+            $columns = array_merge($columns, $userMapped);
         }
 
         // check if any columns is said to ignore/won't insert into database
         $ignoredColumns = $this->getIgnoreCsvColumns();
         if ($ignoredColumns) {
             $ignoredColumns = array_combine(array_values($ignoredColumns), array_fill(0, count($ignoredColumns), false));
-            $mapper = array_merge($mapper, $ignoredColumns);
+            $columns = array_merge($columns, $ignoredColumns);
         }
 
+        $mapper = [];
         // STRUCTURE: ['csv_column' => 'table_column', 'csv_column2' => false, 'csv_column3' => ['table_column3', function($row){ return 'result' }];
         // 1. ['user_name' => 'name', 'user_email' => 'email'];
         // 2. ['username' => 'name', 'password' => function($row){ return hash($row['password']); }]
@@ -189,20 +190,17 @@ abstract class Dataset
         // 4. ['name', 'first_name', 'last_name', 'email'];
         // TABLE FIELDS VARIABLE STRUCTURE
         // [ 'csv_column' => ['table_column', null], 'csv_column3' => ['table_column3', function($row){ return 'result'; }]];
-        foreach ($mapper as $csvColumn => $value) {
+        foreach ($columns as $csvColumn => $value) {
             // Before set the key on variable, trim the column name
             if (is_string($value)) {
                 $value = trim($value);
             }
             if (is_numeric($csvColumn) && is_string($value)) { // "EXAMPLE: 3, email", "EXAMPLE 4: FULL ARRAY"
-                // in case, the column is available from header, and also from mapper,
-                // keep the header key, remove the mapper value. It's all the same. Because, it's having INTEGER
-                // INDEX means it's a one dimensional array
-                if (array_key_exists($value, $mapper)) {
-                    unset($mapper[$csvColumn]);
-                } else {
-                    $mapper[$value] = [$value, null];
-                }
+                // cases: 1. FROM header, 2: From mapper as flat element
+                // unset the element by key,
+                // set the value as the new key
+                unset($mapper[$csvColumn]);
+                $mapper[$value] = [$value, null];
             } elseif (is_string($csvColumn) && is_string($value)) { // "EXAMPLE 3: username"
                 $mapper[$csvColumn] = [$value, null];
             } elseif (is_string($csvColumn) && is_array($value)) { // "STRUCTURE: csv_column2"
@@ -219,7 +217,7 @@ abstract class Dataset
         if (empty($mapper)) {
             throw new DatasetException("Nothing to import from CSV.");
         }
-        // insertable table fields are going to be the fields that has
+        // insertable table fields are going to be the fields that has NOT FALSE VALUES
         // 1. filter the values if any $mapper value has NOT FALSE values
         $filteredMap = array_filter($mapper);
         // 2. get the database table fields for those csv columns
