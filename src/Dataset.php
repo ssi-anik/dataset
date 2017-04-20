@@ -11,13 +11,13 @@ abstract class Dataset
      * CSV RELATED PROPERTIES
      **/
     protected $source = '';
-    protected $excludeHeader = false;
+    protected $excludeHeader = true;
     protected $delimiter = ',';
     protected $enclosure = '"';
     protected $escape = '\\';
     protected $mapper = [];
     protected $headerAsTableField = false;
-    protected $constantFields = [];
+    protected $additionalFields = [];
     protected $ignoreCsvColumns = [];
     private $path = '';
     private $reader = null;
@@ -30,7 +30,7 @@ abstract class Dataset
     private $database = null;
     private $inflector = null;
 
-    public function __construct(Database $database)
+    public function __construct(Connection $database)
     {
         $this->database = $database;
         $this->inflector = Inflector::get();
@@ -39,9 +39,9 @@ abstract class Dataset
     /*
      * CSV RELATED METHODS
      **/
-    public function getConstantFields()
+    public function getAdditionalFields()
     {
-        return (array)$this->constantFields;
+        return (array)$this->additionalFields;
     }
 
     public function getPath()
@@ -153,7 +153,7 @@ abstract class Dataset
         }
 
         // check if constant fields exists, and not associative array
-        if (!empty($this->getConstantFields()) && !$this->isMultidimensionalArray($this->getConstantFields())) {
+        if (!empty($this->getAdditionalFields()) && !$this->isMultidimensionalArray($this->getAdditionalFields())) {
             throw new DatasetException("Constant fields must be associative.");
         }
 
@@ -227,7 +227,7 @@ abstract class Dataset
             return $row[0];
         }, $filteredMap);
         // 3. Merge those with the constant field values
-        $insertAbleTableFields = array_merge(array_values($tableColumns), array_keys($this->getConstantFields()));
+        $insertAbleTableFields = array_merge(array_values($tableColumns), array_keys($this->getAdditionalFields()));
         // check if the table has fields
         $this->checkIfTableColumnsExist($insertAbleTableFields);
         // build the query with those values
@@ -266,23 +266,60 @@ abstract class Dataset
                 $matchedKeys = array_intersect_key(array_keys($filteredMap), array_keys($result));
                 $values = [];
                 ++$onCurrentPageResultCount;
+                $currentRowNumber = $totalOffset + $onCurrentPageResultCount;
+                $stopCurrentRow = false;
                 foreach ($matchedKeys as $key) {
                     // ['csv_column' => ['table_column', 'transformer()']]; @ position 1
                     // transform values if required
                     if (is_callable($mapper[$key][1])) {
-                        $values[] = call_user_func($mapper[$key][1], ...[
+                        $returnedValue = call_user_func($mapper[$key][1], ...[
                             $result,
-                            ($onCurrentPageResultCount + $totalOffset),
+                            $currentRowNumber,
                         ]);
+                        // user explicitly returned false from callback
+                        if (false === $returnedValue) {
+                            $stopCurrentRow = true;
+                            $errorMessage = sprintf("`{$key}` from %s::\$mapper property explicitly returned bool(false)", get_class($this));
+                            $this->errorAlert($errorMessage, ($totalOffset + $onCurrentPageResultCount), array_combine(array_slice($insertAbleTableFields, 0, count($values)), $values));
+                            break;
+                        }
+                        $values[] = $returnedValue;
                     } else {
                         $values[] = $result[$key];
                     }
                 }
-                $values = array_merge($values, array_values($this->getConstantFields()));
+                if (true === $stopCurrentRow) {
+                    continue;
+                }
+
+                // check if the user wants to modify any value from current rows from constant fields
+                foreach ($this->getAdditionalFields() as $tableField => $operation) {
+                    // if the user has set callback in constant field
+                    // call the function or set the value
+                    if (is_callable($operation)) {
+                        $returnedValue = call_user_func($operation, ...[
+                            $result,
+                            $currentRowNumber,
+                        ]);
+                        // check if user explicitly returned false
+                        if (false === $returnedValue) {
+                            $stopCurrentRow = true;
+                            $errorMessage = sprintf("`{$tableField}` from %s::\$additionalFields property explicitly returned bool(false)", get_class($this));
+                            $this->errorAlert($errorMessage, ($totalOffset + $onCurrentPageResultCount), array_combine(array_slice($insertAbleTableFields, 0, count($values)), $values));
+                            break;
+                        }
+                        $values[] = $returnedValue;
+                    } else {
+                        $values[] = $operation;
+                    }
+                }
+                if (true === $stopCurrentRow) {
+                    continue;
+                }
+
                 if (!$statement->execute($values)) {
-                    echo sprintf("Error: %s\n", $statement->errorInfo()[2]);
-                    echo sprintf("ROW: %d\n", ($totalOffset + $onCurrentPageResultCount));
-                    echo sprintf("Data: %s\n", json_encode(array_combine($insertAbleTableFields, $values)));
+                    var_dump($insertAbleTableFields, $values);
+                    $this->errorAlert($statement->errorInfo()[2], ($totalOffset + $onCurrentPageResultCount), array_combine($insertAbleTableFields, $values));
                     $errorOccurred = true;
                     break;
                 }
@@ -292,5 +329,19 @@ abstract class Dataset
             }
         } while ($shouldContinue);
         return true;
+    }
+
+    private function errorAlert($message = '', $row = 0, array $data = [])
+    {
+        if ($message) {
+            echo sprintf("MESSAGE: %s\n", $message);
+        }
+        if ($row) {
+            echo sprintf("CSV ROW: %d\n", $row);
+        }
+        if ($data) {
+            echo sprintf("VALUES: %s\n", json_encode($data));
+        }
+        echo PHP_EOL;
     }
 }

@@ -2,7 +2,7 @@
 
 use PDO;
 
-class Database
+class Connection
 {
     private static $instance = null;
     private $host, $database, $username, $password, $driver, $attributes;
