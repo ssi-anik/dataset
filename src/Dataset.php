@@ -106,6 +106,7 @@ abstract class Dataset
 
     public function import()
     {
+        echo sprintf("\n-------------------------------- Importing From %s -----------------------------------------\n", get_class($this));
         // check if the source is empty
         if (empty(trim($this->source))) {
             $this->path = dirname((new \ReflectionClass(static::class))->getFileName());
@@ -206,6 +207,7 @@ abstract class Dataset
             } elseif (is_string($csvColumn) && is_array($value)) { // "STRUCTURE: csv_column2"
                 $mapper[$csvColumn] = $value;
             } elseif (is_string($csvColumn) && false === $value) { // "EXAMPLE: 3, password"
+                $mapper[$csvColumn] = false;
                 continue;
             } else {
                 $message = sprintf('Invalid `%s` on %s::$mapper.', is_string($csvColumn) ? $csvColumn : (string)$value, get_class($this));
@@ -239,12 +241,14 @@ abstract class Dataset
         $current = 0;
         $headerOffset = $this->getExcludeHeader() ? 1 : 0;
         $shouldContinue = true;
+        $errorOccurred = false;
         do {
             $totalOffset = $current * $pagination + $headerOffset;
             $resultSet = $this->getReader()
                               ->setOffset($totalOffset)
                               ->setLimit($pagination)
                               ->fetchAssoc(array_keys($mapper));
+
             // increment the current page to +1
             ++$current;
 
@@ -256,9 +260,10 @@ abstract class Dataset
             }
             echo sprintf("Loaded %5d%s %d rows.\n", $current, $this->inflector->ordinal($current), $iterator_item_count);
 
-            // loop over the result set
+            // row counter for the result
             $onCurrentPageResultCount = 0;
-            $errorOccurred = false;
+
+            // loop over the result set
             foreach ($resultSet as $result) {
                 // get the fields those are required to be taken from
                 $matchedKeys = array_intersect_key(array_keys($filteredMap), array_keys($result));
@@ -278,7 +283,7 @@ abstract class Dataset
                         if (false === $returnedValue) {
                             $stopCurrentRow = true;
                             $errorMessage = sprintf("`{$key}` from %s::\$mapper property explicitly returned bool(false)", get_class($this));
-                            $this->errorAlert($errorMessage, ($totalOffset + $onCurrentPageResultCount), array_combine(array_slice($insertAbleTableFields, 0, count($values)), $values));
+                            $this->errorAlert($errorMessage, $currentRowNumber, array_combine(array_slice($insertAbleTableFields, 0, count($values)), $values));
                             break;
                         }
                         $values[] = $returnedValue;
@@ -303,7 +308,7 @@ abstract class Dataset
                         if (false === $returnedValue) {
                             $stopCurrentRow = true;
                             $errorMessage = sprintf("`{$tableField}` from %s::\$additionalFields property explicitly returned bool(false)", get_class($this));
-                            $this->errorAlert($errorMessage, ($totalOffset + $onCurrentPageResultCount), array_combine(array_slice($insertAbleTableFields, 0, count($values)), $values));
+                            $this->errorAlert($errorMessage, $currentRowNumber, array_combine(array_slice($insertAbleTableFields, 0, count($values)), $values));
                             break;
                         }
                         $values[] = $returnedValue;
@@ -316,8 +321,7 @@ abstract class Dataset
                 }
 
                 if (!$statement->execute($values)) {
-                    var_dump($insertAbleTableFields, $values);
-                    $this->errorAlert($statement->errorInfo()[2], ($totalOffset + $onCurrentPageResultCount), array_combine($insertAbleTableFields, $values));
+                    $this->errorAlert($statement->errorInfo()[2], $currentRowNumber, array_combine($insertAbleTableFields, $values));
                     $errorOccurred = true;
                     break;
                 }
@@ -326,7 +330,8 @@ abstract class Dataset
                 break;
             }
         } while ($shouldContinue);
-        return true;
+        echo sprintf("-------------------------------- Importing Finished from %s --------------------------------\n", get_class($this));
+        return $errorOccurred;
     }
 
     private function errorAlert($message = '', $row = 0, array $data = [])
