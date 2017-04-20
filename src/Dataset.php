@@ -330,7 +330,7 @@ abstract class Dataset
                 break;
             }
         } while ($shouldContinue);
-        echo sprintf("-------------------------------- Importing Finished from %s --------------------------------\n", get_class($this));
+        echo sprintf("-------------------------------- Import Finished from %s --------------------------------\n", get_class($this));
         return $errorOccurred;
     }
 
