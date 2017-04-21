@@ -27,12 +27,12 @@ abstract class Dataset
      **/
     protected $table = '';
     private $query = '';
-    private $database = null;
+    private $connection = null;
     private $inflector = null;
 
-    public function __construct(Connection $database)
+    public function __construct(Connection $connection)
     {
-        $this->database = $database;
+        $this->connection = $connection;
         $this->inflector = Inflector::get();
     }
 
@@ -234,8 +234,8 @@ abstract class Dataset
         $this->query = $this->queryBuilder($insertAbleTableFields);
 
         // prepare the pdo statement
-        $statement = $this->database->getPDO()
-                                    ->prepare($this->query);
+        $statement = $this->connection->getPDO()
+									  ->prepare($this->query);
 
         $pagination = 100;
         $current = 0;
