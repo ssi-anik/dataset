@@ -7,7 +7,7 @@ require_once "Company.php";
 require_once "Category.php";
 require_once "Employee.php";
 require_once "Product.php";
-require_once "Supplier.php";
+
 $dotEnv = new Dotenv(__DIR__);
 $dotEnv->load();
 
@@ -17,21 +17,21 @@ $password = getenv('PASSWORD');
 $database = getenv('DATABASE');
 
 try {
-    $connection = Connection::getConnection($host, $database, $username, $password);
-    $company = new Company($connection);
-    #$company->import();
+	$connection = Connection::getConnection($host, $database, $username, $password);
 
-    $category = new Category($connection);
-    $category->import();
+	$company = new Company($connection);
+	$company->import();
 
-    $employee = new Employee($connection);
-    #$employee->import();
+	$category = new Category($connection);
+	$category->import();
 
-    $product = new Product($connection);
-    $product->import();
+	$employee = new Employee($connection);
+	$employee->import();
 
+	$product = new Product($connection);
+	$product->import();
 
-} catch (Exception $exception) {
-    echo $exception->getMessage() . PHP_EOL;
-    print_r(json_encode($exception->getTrace()));
+} catch ( Exception $exception ) {
+	echo $exception->getMessage() . PHP_EOL;
+	print_r(json_encode($exception->getTrace()));
 }

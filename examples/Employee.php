@@ -5,9 +5,9 @@ use Dataset\Dataset;
 
 class Employee extends Dataset
 {
-    public function __construct(Connection $database)
+    public function __construct(Connection $connection)
     {
-        parent::__construct($database);
+        parent::__construct($connection);
         $this->headerAsTableField = true;
         $this->additionalFields = [
             'created_at' => date('Y-m-d h:i:s', strtotime('now')),
