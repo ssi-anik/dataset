@@ -158,6 +158,11 @@ abstract class Dataset
             throw new DatasetException("Constant fields must be associative.");
         }
 
+        // check if ignored csv column is flat array or not
+		if ($this->isMultidimensionalArray($this->getIgnoreCsvColumns())) {
+			throw new DatasetException("Ignored CSV Columns cannot be associative array");
+		}
+
         // file exists, set the reader
         $this->setReader();
 
