@@ -7,7 +7,7 @@ require_once "Company.php";
 require_once "Category.php";
 require_once "Employee.php";
 require_once "Product.php";
-require_once "Supplier.php";
+
 $dotEnv = new Dotenv(__DIR__);
 $dotEnv->load();
 
