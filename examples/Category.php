@@ -5,9 +5,9 @@ use Dataset\Dataset;
 
 class Category extends Dataset
 {
-    public function __construct(Connection $database)
+    public function __construct(Connection $connection)
     {
-        parent::__construct($database);
+        parent::__construct($connection);
         $this->mapper = [
             "categoryID"   => 'id',
             "categoryName" => 'name',

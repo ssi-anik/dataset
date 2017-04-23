@@ -27,12 +27,12 @@ abstract class Dataset
      **/
     protected $table = '';
     private $query = '';
-    private $database = null;
+    private $connection = null;
     private $inflector = null;
 
-    public function __construct(Connection $database)
+    public function __construct(Connection $connection)
     {
-        $this->database = $database;
+        $this->connection = $connection;
         $this->inflector = Inflector::get();
     }
 
@@ -125,7 +125,7 @@ abstract class Dataset
                 $source = realpath(__DIR__ . "/" . $this->source);
                 if (!$source) {
                     // file doesn't even exist, throw exception
-                    throw new DatasetException("No file exists on `{$this->source}`");
+                    throw new DatasetException("No file exists on `{$this->source}`.");
                 } else {
                     // exists, add to source
                     $this->source = $source;
@@ -145,7 +145,7 @@ abstract class Dataset
 
         // check if table exists in database, otherwise throw exception
         if (!$this->checkIfTableExists($this->table)) {
-            throw new DatasetException("No table exists named `{$this->table}`");
+            throw new DatasetException("No table exists named `{$this->table}`.");
         }
 
         // check if header is not present and no mapper is available, throw exception in this case.
@@ -157,6 +157,11 @@ abstract class Dataset
         if (!empty($this->getAdditionalFields()) && !$this->isMultidimensionalArray($this->getAdditionalFields())) {
             throw new DatasetException("Constant fields must be associative.");
         }
+
+        // check if ignored csv column is flat array or not
+		if ($this->isMultidimensionalArray($this->getIgnoreCsvColumns())) {
+			throw new DatasetException("Ignored CSV Columns cannot be associative array.");
+		}
 
         // file exists, set the reader
         $this->setReader();
@@ -234,8 +239,8 @@ abstract class Dataset
         $this->query = $this->queryBuilder($insertAbleTableFields);
 
         // prepare the pdo statement
-        $statement = $this->database->getPDO()
-                                    ->prepare($this->query);
+        $statement = $this->connection->getPDO()
+									  ->prepare($this->query);
 
         $pagination = 100;
         $current = 0;

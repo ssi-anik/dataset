@@ -23,7 +23,7 @@ trait SQLHelper
         }
 
         $query = "SHOW COLUMNS from " . $table;
-        $statement = $this->database->getPDO()->prepare($query);
+        $statement = $this->connection->getPDO()->prepare($query);
         $statement->execute();
         $tableColumns = array_map(function ($column) {
             return $column['Field'];
@@ -37,7 +37,7 @@ trait SQLHelper
 
     protected function checkIfTableExists($tableName)
     {
-        $pdo = $this->database->getPDO();
+        $pdo = $this->connection->getPDO();
         $query = "SHOW TABLES LIKE ?";
         $statement = $pdo->prepare($query);
         $statement->execute([$tableName]);
