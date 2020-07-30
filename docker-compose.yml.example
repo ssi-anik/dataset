@@ -1,0 +1,33 @@
+version: '2'
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: ./Dockerfile
+        volumes:
+            - .:/app
+        links:
+            - mysql
+            - postgres
+
+    mysql:
+        image: mysql:8.0.21
+        ports:
+            - 3306:3306
+        environment:
+            - "MYSQL_ROOT_PASSWORD=secret"
+            - "MYSQL_DATABASE=dataset"
+        volumes:
+            - ~/.backup/dataset/mysql/dataset:/var/lib/mysql
+
+    postgres:
+        image: postgres:10.4-alpine
+        ports:
+            - 5432:5432
+        environment:
+            - POSTGRES_USER=root
+            - POSTGRES_PASSWORD=secret
+            - POSTGRES_DB=dataset
+        volumes:
+            - ~/.backup/dataset/postgres/dataset:/var/lib/postgresql/data

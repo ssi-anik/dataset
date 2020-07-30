@@ -1,6 +1,6 @@
 {
     "name": "anik/dataset",
-    "description": "Dataset is a php package for importing csv into your database table",
+    "description": "Dataset is a php package for importing & exporting data within CSV & Database",
     "type": "library",
     "license": "MIT",
     "authors": [
@@ -15,10 +15,9 @@
         }
     },
     "require": {
-        "league/csv": "^8.2",
-        "icanboogie/inflector": "^1.4"
-    },
-    "require-dev": {
-        "vlucas/phpdotenv": "^2.4"
+        "php": ">=7.2",
+        "league/csv": "^9.0",
+        "doctrine/inflector": "^2.0",
+        "illuminate/database": "^6.0|^7.0"
     }
 }
