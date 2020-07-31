@@ -18,7 +18,7 @@ trait Support
         $this->container = $container ?? new Container();
     }
 
-    protected function eventName ($event) {
+    protected function makeDatasetEvent ($event) {
         return 'dataset.' . $event;
     }
 
@@ -29,6 +29,26 @@ trait Support
      */
     public function setEventDispatcher (Dispatcher $dispatcher) {
         $this->container->instance('events', $dispatcher);
+    }
+
+    /**
+     * Shoot exiting event if an event returns boolean false as response
+     *
+     * @param string $event
+     * @param array  $parameters
+     *
+     * @return bool
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
+     */
+    protected function exitOnEventResponse (string $event, array $parameters = []) {
+        $result = $this->fireEvent($event, $parameters);
+        if (false === $result) {
+            $this->fireEvent('exiting', [ 'event' => $this->makeDatasetEvent($event) ]);
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -44,7 +64,7 @@ trait Support
         if (!$this->container || !$this->container->bound('events')) {
             return true;
         }
-        $name = $this->eventName($event);
+        $name = $this->makeDatasetEvent($event);
         $parameters = array_merge([ 'class' => get_class($this) ], $parameters);
         $result = $this->container->make('events')->dispatch($name, $parameters);
 

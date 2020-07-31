@@ -155,16 +155,13 @@ abstract class DatabaseStorage
      * If you want `cursor` to be used
      */
     private function cursorBasedIteration () : bool {
-        // fire event, if returns `false` explicitly, exit
-        $result = $this->fireEvent('iteration', [
+        $result = $this->exitOnEventResponse('iteration.started', [
             'uses'   => 'cursor',
             'offset' => $this->offset,
             'limit'  => $this->limit(),
         ]);
-        if (false === $result) {
-            $this->fireEvent('exiting', [ 'event' => $this->eventName('iteration') ]);
-
-            return;
+        if (!$result) {
+            return false;
         }
 
         $shouldBreak = false;
@@ -194,15 +191,12 @@ abstract class DatabaseStorage
      * If you want `chunk` to be used
      */
     private function chunkBasedIteration () : bool {
-        // fire event, if explicitly
-        $result = $this->fireEvent('iteration', [
+        $result = $this->exitOnEventResponse('iteration.started', [
             'uses'  => 'chunk',
             'limit' => $this->limit(),
         ]);
-        if (false === $result) {
-            $this->fireEvent('exiting', [ 'event' => $this->eventName('iteration') ]);
-
-            return;
+        if (!$result) {
+            return false;
         }
 
         return $this->getBuilder()->chunk($this->limit(), function ($records, $page) {
@@ -215,11 +209,9 @@ abstract class DatabaseStorage
      * Export the result set into a CSV file
      */
     public function export () : bool {
-        $continue = $this->fireEvent('starting');
-        if (false === $continue) {
-            $this->fireEvent('exiting', [ 'event' => $this->eventName('starting') ]);
-
-            return;
+        $result = $this->exitOnEventResponse('starting');
+        if (!$result) {
+            return false;
         }
 
         $this->createWriter();
@@ -231,14 +223,15 @@ abstract class DatabaseStorage
     /**
      * Instantiate the file writer
      */
-    private function createWriter () : void {
-        $continue = $this->fireEvent('creating', [ 'file' => $this->filename() ]);
-        if (false === $continue) {
-            $this->fireEvent('exiting', [ 'event' => $this->eventName('creating') ]);
-
-            return;
+    private function createWriter () : bool {
+        $result = $this->exitOnEventResponse('creating', [ 'file' => $this->filename() ]);
+        if (!$result) {
+            return false;
         }
+
         $this->writer = Writer::createFromPath($this->filename(), $this->fileOpenMode());
+
+        return true;
     }
 
     /**
