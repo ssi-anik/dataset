@@ -125,21 +125,21 @@ trait Support
     /**
      * Delimiter for the CSV
      */
-    protected function delimiter () : string {
+    protected function delimiterCharacter () : string {
         return ',';
     }
 
     /**
      * Enclosure for the CSV
      */
-    protected function getEnclosure () : string {
+    protected function enclosureCharacter () : string {
         return '"';
     }
 
     /**
      * Escape character for the CSV
      */
-    protected function getEscape () {
+    protected function escapeCharacter () : string {
         return '\\';
     }
 }
