@@ -4,6 +4,7 @@ namespace Dataset;
 
 use Closure;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Query\Expression;
 use League\Csv\Writer;
 use Throwable;
 
@@ -33,8 +34,8 @@ abstract class DatabaseStorage
     /**
      * Column name for order by
      */
-    protected function orderBy () : string {
-        return 'id';
+    protected function orderBy () : Expression {
+        return $this->db()->raw('id');
     }
 
     /**
