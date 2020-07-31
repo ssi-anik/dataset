@@ -330,14 +330,4 @@ abstract class DatabaseStorage
 
         return [ $table, $first, $operator, $second, $type, $where ];
     }
-
-    public function data () {
-        return [
-            'table'   => $this->table(),
-            'file'    => $this->filename(),
-            'columns' => $this->columns(),
-            'headers' => $this->headers(),
-            'data'    => $this->getBuilder()->toSql(),
-        ];
-    }
 }
