@@ -5,6 +5,7 @@ namespace Dataset;
 use Closure;
 use Illuminate\Database\Query\Builder;
 use League\Csv\Writer;
+use Throwable;
 
 abstract class DatabaseStorage
 {
@@ -84,21 +85,40 @@ abstract class DatabaseStorage
         return [];
     }
 
+    private function processRecordBatch ($records) {
+        $results = [];
+        foreach ( $records as $record ) {
+            $results[] = $this->processRecord((array) $record);
+        }
+
+        if (!empty($results)) {
+            try {
+                $this->writer->insertAll($results);
+
+                return true;
+            } catch ( Throwable $t ) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Process each record & insert into CSV
      *
      * @param array $record
      *
-     * @throws \League\Csv\CannotInsertRecord
+     * @return array
      */
-    private function processRecord (array $record) {
+    private function processRecord (array $record) : array {
         $record = array_merge($record, $this->mutation($record));
 
         $headers = $this->headers();
         // if the first element of the headers is integer, it's assumed to be integer based array
         $csvColumns = is_integer(array_keys($headers)[0]) ? $headers : array_keys($headers);
-        $storable = $this->extractColumnsForCsv($csvColumns, $record);
-        $this->writer->insertOne($storable);
+
+        return $this->extractColumnsForCsv($csvColumns, $record);
     }
 
     /**
@@ -133,16 +153,14 @@ abstract class DatabaseStorage
         $limit = $this->limit();
         do {
             $builder = $this->getBuilder()->limit($limit)->offset($this->offset);
-            $results = $builder->cursor();
+            $records = $builder->cursor();
             /**
              * if the result count is less than the limit. all the data are pulled
              */
-            if ($results->count() < $limit) {
+            if ($records->count() < $limit) {
                 $shouldBreak = true;
             }
-            foreach ( $results as $result ) {
-                $this->processRecord((array) $result);
-            }
+            $this->processRecordBatch($records);
 
             $this->offset += $limit;
 
@@ -165,10 +183,7 @@ abstract class DatabaseStorage
         }
 
         $this->getBuilder()->chunk($this->limit(), function ($records) {
-            foreach ( $records as $record ) {
-                $record = (array) $record;
-                $this->processRecord($record);
-            }
+            $this->processRecordBatch($records);
         });
     }
 
