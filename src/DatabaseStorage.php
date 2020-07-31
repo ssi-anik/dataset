@@ -30,6 +30,21 @@ abstract class DatabaseStorage
     }
 
     /**
+     * Column name for order by
+     */
+    protected function orderBy () : string {
+        return 'id';
+    }
+
+    /**
+     * Order by direction
+     * Can be 'ASC', 'DESC'
+     */
+    protected function orderDirection () : string {
+        return 'ASC';
+    }
+
+    /**
      * The columns to get from the table
      * If wants to fetch specific columns, return array of column names
      */
@@ -149,9 +164,11 @@ abstract class DatabaseStorage
             return;
         }
 
-        $this->getBuilder()->chunk($this->limit(), function ($record) {
-            $record = (array) $record;
-            $this->processRecord($record);
+        $this->getBuilder()->chunk($this->limit(), function ($records) {
+            foreach ( $records as $record ) {
+                $record = (array) $record;
+                $this->processRecord($record);
+            }
         });
     }
 
@@ -204,7 +221,11 @@ abstract class DatabaseStorage
      * @return Builder
      */
     protected function getBuilder () : Builder {
-        $query = $this->db()->table($this->table())->where($this->condition())->select($this->columns());
+        $query = $this->db()
+                      ->table($this->table())
+                      ->where($this->condition())
+                      ->select($this->columns())
+                      ->orderBy($this->orderBy(), $this->orderDirection());
 
         foreach ( $this->joins() as $join ) {
             $query->join(...$this->parseJoin($join));
