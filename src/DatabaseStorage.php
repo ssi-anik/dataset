@@ -101,8 +101,18 @@ abstract class DatabaseStorage
      * @param int      $page
      *
      * @return bool
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
     private function processRecordBatch (iterable $records, int $page) : bool {
+        $result = $this->exitOnEventResponse('iteration.batch', [
+            'batch' => $page,
+            'count' => $records->count(),
+            'limit' => $this->limit(),
+        ]);
+        if (!$result) {
+            return false;
+        }
+
         $results = [];
         foreach ( $records as $record ) {
             if ($result = $this->processRecord((array) $record)) {
@@ -181,16 +191,6 @@ abstract class DatabaseStorage
                 $shouldBreak = true;
             }
 
-            $result = $this->exitOnEventResponse('iteration.batch', [
-                'uses'  => 'cursor',
-                'batch' => $page,
-                'limit' => $this->limit(),
-                'count' => $records->count(),
-            ]);
-            if (!$result) {
-                return false;
-            }
-
             if (false === $this->processRecordBatch($records, $page++)) {
                 $this->fireEvent('iteration.stopped', [
                     'uses' => 'cursor',
@@ -223,16 +223,6 @@ abstract class DatabaseStorage
         }
 
         $response = $this->getBuilder()->chunk($this->limit(), function ($records, $page) {
-            $result = $this->exitOnEventResponse('iteration.batch', [
-                'uses'  => 'chunk',
-                'batch' => $page,
-                'limit' => $this->limit(),
-                'count' => $records->count(),
-            ]);
-            if (!$result) {
-                return false;
-            }
-
             if (false === $this->processRecordBatch($records, $page)) {
                 $this->fireEvent('iteration.stopped', [
                     'uses' => 'chunk',
