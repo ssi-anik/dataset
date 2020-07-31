@@ -85,7 +85,23 @@ abstract class DatabaseStorage
         return [];
     }
 
-    private function processRecordBatch ($records) {
+    /**
+     * Exit insertion if any error occurs
+     */
+    protected function exitOnError () : bool {
+        return true;
+    }
+
+    /**
+     * Process records in batch
+     *
+     * @param iterable $records
+     *
+     * @param int      $page
+     *
+     * @return bool
+     */
+    private function processRecordBatch (iterable $records, int $page) : bool {
         $results = [];
         foreach ( $records as $record ) {
             $results[] = $this->processRecord((array) $record);
@@ -97,7 +113,9 @@ abstract class DatabaseStorage
 
                 return true;
             } catch ( Throwable $t ) {
-                return false;
+                if (false === $this->exitOnError()) {
+                    return true;
+                }
             }
         }
 
@@ -136,7 +154,7 @@ abstract class DatabaseStorage
     /**
      * If you want `cursor` to be used
      */
-    private function cursorBasedIteration () {
+    private function cursorBasedIteration () : bool {
         // fire event, if returns `false` explicitly, exit
         $result = $this->fireEvent('iteration', [
             'uses'   => 'cursor',
@@ -151,6 +169,7 @@ abstract class DatabaseStorage
 
         $shouldBreak = false;
         $limit = $this->limit();
+        $page = 1;
         do {
             $builder = $this->getBuilder()->limit($limit)->offset($this->offset);
             $records = $builder->cursor();
@@ -160,17 +179,21 @@ abstract class DatabaseStorage
             if ($records->count() < $limit) {
                 $shouldBreak = true;
             }
-            $this->processRecordBatch($records);
+            if (false === $this->processRecordBatch($records, $page++)) {
+                return false;
+            }
 
             $this->offset += $limit;
 
         } while ( false === $shouldBreak );
+
+        return true;
     }
 
     /**
      * If you want `chunk` to be used
      */
-    private function chunkBasedIteration () {
+    private function chunkBasedIteration () : bool {
         // fire event, if explicitly
         $result = $this->fireEvent('iteration', [
             'uses'  => 'chunk',
@@ -182,8 +205,8 @@ abstract class DatabaseStorage
             return;
         }
 
-        $this->getBuilder()->chunk($this->limit(), function ($records) {
-            $this->processRecordBatch($records);
+        return $this->getBuilder()->chunk($this->limit(), function ($records, $page) {
+            return $this->processRecordBatch($records, $page);
         });
     }
 
@@ -191,7 +214,7 @@ abstract class DatabaseStorage
      * Prepare all the task
      * Export the result set into a CSV file
      */
-    public function export () {
+    public function export () : bool {
         $continue = $this->fireEvent('starting');
         if (false === $continue) {
             $this->fireEvent('exiting', [ 'event' => $this->eventName('starting') ]);
@@ -201,7 +224,8 @@ abstract class DatabaseStorage
 
         $this->createWriter();
         $this->addFileHeader();
-        $this->fetchUsing() == 'cursor' ? $this->cursorBasedIteration() : $this->chunkBasedIteration();
+
+        return $this->fetchUsing() == 'cursor' ? $this->cursorBasedIteration() : $this->chunkBasedIteration();
     }
 
     /**
