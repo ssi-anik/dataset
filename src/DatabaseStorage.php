@@ -176,13 +176,32 @@ abstract class DatabaseStorage
             if ($records->count() < $limit) {
                 $shouldBreak = true;
             }
+
+            $result = $this->exitOnEventResponse('iteration.batch', [
+                'uses'  => 'cursor',
+                'batch' => $page,
+                'limit' => $this->limit(),
+                'count' => $records->count(),
+            ]);
+            if (!$result) {
+                return false;
+            }
+
             if (false === $this->processRecordBatch($records, $page++)) {
+                $this->fireEvent('iteration.stopped', [
+                    'uses' => 'cursor',
+                ]);
+
                 return false;
             }
 
             $this->offset += $limit;
 
         } while ( false === $shouldBreak );
+
+        $this->fireEvent('iteration.completed', [
+            'uses' => 'cursor',
+        ]);
 
         return true;
     }
@@ -199,9 +218,31 @@ abstract class DatabaseStorage
             return false;
         }
 
-        return $this->getBuilder()->chunk($this->limit(), function ($records, $page) {
-            return $this->processRecordBatch($records, $page);
+        $response = $this->getBuilder()->chunk($this->limit(), function ($records, $page) {
+            $result = $this->exitOnEventResponse('iteration.batch', [
+                'uses'  => 'chunk',
+                'batch' => $page,
+                'limit' => $this->limit(),
+                'count' => $records->count(),
+            ]);
+            if (!$result) {
+                return false;
+            }
+
+            if (false === $this->processRecordBatch($records, $page)) {
+                $this->fireEvent('iteration.stopped', [
+                    'uses' => 'chunk',
+                ]);
+
+                return false;
+            }
         });
+
+        $this->fireEvent('iteration.completed', [
+            'uses' => 'chunk',
+        ]);
+
+        return $response;
     }
 
     /**
