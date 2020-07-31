@@ -105,7 +105,9 @@ abstract class DatabaseStorage
     private function processRecordBatch (iterable $records, int $page) : bool {
         $results = [];
         foreach ( $records as $record ) {
-            $results[] = $this->processRecord((array) $record);
+            if ($result = $this->processRecord((array) $record)) {
+                $results[] = $result;
+            }
         }
 
         if (!empty($results)) {
@@ -149,7 +151,8 @@ abstract class DatabaseStorage
      * @return array
      */
     private function extractColumnsForCsv (array $required, array $record) : array {
-        return array_replace(array_flip($required), array_intersect_key($record, array_flip($required)));
+        return empty($required) ? $record
+            : array_replace(array_flip($required), array_intersect_key($record, array_flip($required)));
     }
 
     /**
