@@ -256,10 +256,9 @@ abstract class DatabaseStorage
             return false;
         }
 
-        if (false === $this->createWriter()) {
+        if (false === $this->prepareWriter()) {
             return false;
         }
-        $this->addFileHeader();
 
         return $this->fetchUsing() == 'cursor' ? $this->cursorBasedIteration() : $this->chunkBasedIteration();
     }
@@ -267,7 +266,7 @@ abstract class DatabaseStorage
     /**
      * Instantiate the file writer
      */
-    private function createWriter () : bool {
+    private function prepareWriter () : bool {
         $result = $this->exitOnEventResponse('creating', [ 'file' => $this->filename() ]);
         if (!$result) {
             return false;
@@ -277,6 +276,7 @@ abstract class DatabaseStorage
         $this->writer->setDelimiter($this->delimiterCharacter());
         $this->writer->setEnclosure($this->enclosureCharacter());
         $this->writer->setEscape($this->escapeCharacter());
+        $this->addFileHeader();
 
         return true;
     }
