@@ -13,7 +13,6 @@ abstract class DatabaseStorage
 {
     use Support;
 
-    private $offset = 0;
     /** @var $writer Writer */
     private $writer = null;
 
@@ -137,7 +136,8 @@ abstract class DatabaseStorage
             }
         }
 
-        return false;
+        // in case the records count is zero, nothing in the above was executed, thus bool(true)
+        return $records->count() == 0 ? true : false;
     }
 
     /**
@@ -175,9 +175,8 @@ abstract class DatabaseStorage
      */
     private function cursorBasedIteration () : bool {
         $result = $this->exitOnEventResponse('iteration.started', [
-            'uses'   => 'cursor',
-            'offset' => $this->offset,
-            'limit'  => $this->limit(),
+            'uses'  => 'cursor',
+            'limit' => $this->limit(),
         ]);
         if (!$result) {
             return false;
@@ -186,8 +185,11 @@ abstract class DatabaseStorage
         $shouldBreak = false;
         $limit = $this->limit();
         $page = 1;
+        $isCompleted = true;
+
         do {
-            $builder = $this->getBuilder()->limit($limit)->offset($this->offset);
+            $offset = ($page - 1) * $limit;
+            $builder = $this->getBuilder()->limit($limit)->offset($offset);
             $records = $builder->cursor();
             /**
              * if the result count is less than the limit. all the data are pulled
@@ -200,19 +202,16 @@ abstract class DatabaseStorage
                 $this->fireEvent('iteration.stopped', [
                     'uses' => 'cursor',
                 ]);
-
-                return false;
+                $isCompleted = false;
+                break;
             }
-
-            $this->offset += $limit;
-
         } while ( false === $shouldBreak );
 
         $this->fireEvent('iteration.completed', [
             'uses' => 'cursor',
         ]);
 
-        return true;
+        return $isCompleted;
     }
 
     /**
