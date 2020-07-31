@@ -4,24 +4,15 @@ namespace Dataset;
 
 use Closure;
 use Illuminate\Database\Query\Builder;
+use League\Csv\Writer;
 
 abstract class DatabaseStorage
 {
     use Support;
 
-    /**
-     * Get the table name to read from
-     */
-    protected function table () : string {
-        return $this->inflector()->pluralize($this->tableize());
-    }
-
-    /**
-     * Filename for the CSV file
-     */
-    protected function filename () : string {
-        return sprintf('%s.csv', $this->inflector()->pluralize($this->table()));
-    }
+    private $offset = 0;
+    /** @var $writer Writer */
+    private $writer = null;
 
     /**
      * Filter out the result
@@ -42,15 +33,8 @@ abstract class DatabaseStorage
      * The columns to get from the table
      * If wants to fetch specific columns, return array of column names
      */
-    public function columns () : array {
+    protected function columns () : array {
         return [ '*' ];
-    }
-
-    /**
-     * Write headers in the csv file
-     */
-    protected function writeHeaders () : bool {
-        return false;
     }
 
     /**
@@ -69,23 +53,158 @@ abstract class DatabaseStorage
         return 5000;
     }
 
-    public function save () {
-        $offset = 0;
+    /**
+     * Decide the technique to pull the data from storage
+     * Can be either 'cursor' or 'chunk'
+     *
+     */
+    protected function fetchUsing () : string {
+        return 'cursor';
+    }
+
+    /**
+     * Return new data based on any calculation or mutate data if required
+     */
+    protected function mutation ($record) : array {
+        return [];
+    }
+
+    /**
+     * Process each record & insert into CSV
+     *
+     * @param array $record
+     *
+     * @throws \League\Csv\CannotInsertRecord
+     */
+    private function processRecord (array $record) {
+        $record = array_merge($record, $this->mutation($record));
+
+        $headers = $this->headers();
+        // if the first element of the headers is integer, it's assumed to be integer based array
+        $csvColumns = is_integer(array_keys($headers)[0]) ? $headers : array_keys($headers);
+        $storable = $this->extractColumnsForCsv($csvColumns, $record);
+        $this->writer->insertOne($storable);
+    }
+
+    /**
+     * Only extract the required fields to insert into the CSV
+     *
+     * @param array $required
+     * @param array $record
+     *
+     * @return array
+     */
+    private function extractColumnsForCsv (array $required, array $record) : array {
+        return array_replace(array_flip($required), array_intersect_key($record, array_flip($required)));
+    }
+
+    /**
+     * If you want `cursor` to be used
+     */
+    private function cursorBasedIteration () {
+        // fire event, if returns `false` explicitly, exit
+        $result = $this->fireEvent('iteration', [
+            'uses'   => 'cursor',
+            'offset' => $this->offset,
+            'limit'  => $this->limit(),
+        ]);
+        if (false === $result) {
+            $this->fireEvent('exiting', [ 'event' => $this->eventName('iteration') ]);
+
+            return;
+        }
+
         $shouldBreak = false;
+        $limit = $this->limit();
         do {
-            $builder = $this->getBuilder($offset);
-            $shouldBreak = true;
-            $offset += $this->limit();
+            $builder = $this->getBuilder()->limit($limit)->offset($this->offset);
+            $results = $builder->cursor();
+            /**
+             * if the result count is less than the limit. all the data are pulled
+             */
+            if ($results->count() < $limit) {
+                $shouldBreak = true;
+            }
+            foreach ( $results as $result ) {
+                $this->processRecord((array) $result);
+            }
+
+            $this->offset += $limit;
+
         } while ( false === $shouldBreak );
     }
 
-    private function getBuilder ($offset) : Builder {
-        $query = $this->db()
-                      ->table($this->table())
-                      ->where($this->condition())
-                      ->limit($this->limit())
-                      ->offset($offset)
-                      ->select($this->columns());
+    /**
+     * If you want `chunk` to be used
+     */
+    private function chunkBasedIteration () {
+        // fire event, if explicitly
+        $result = $this->fireEvent('iteration', [
+            'uses'  => 'chunk',
+            'limit' => $this->limit(),
+        ]);
+        if (false === $result) {
+            $this->fireEvent('exiting', [ 'event' => $this->eventName('iteration') ]);
+
+            return;
+        }
+
+        $this->getBuilder()->chunk($this->limit(), function ($record) {
+            $record = (array) $record;
+            $this->processRecord($record);
+        });
+    }
+
+    /**
+     * Prepare all the task
+     * Export the result set into a CSV file
+     */
+    public function export () {
+        $continue = $this->fireEvent('starting');
+        if (false === $continue) {
+            $this->fireEvent('exiting', [ 'event' => $this->eventName('starting') ]);
+
+            return;
+        }
+
+        $this->createWriter();
+        $this->addFileHeader();
+        $this->fetchUsing() == 'cursor' ? $this->cursorBasedIteration() : $this->chunkBasedIteration();
+    }
+
+    /**
+     * Instantiate the file writer
+     */
+    private function createWriter () : void {
+        $continue = $this->fireEvent('creating', [ 'file' => $this->filename() ]);
+        if (false === $continue) {
+            $this->fireEvent('exiting', [ 'event' => $this->eventName('creating') ]);
+
+            return;
+        }
+        $this->writer = Writer::createFromPath($this->filename(), $this->fileOpenMode());
+    }
+
+    /**
+     * If you provided headers as non empty array
+     */
+    private function addFileHeader () : void {
+        $headers = $this->headers();
+        if (empty($headers)) {
+            return;
+        }
+
+        $this->writer->insertOne($headers);
+    }
+
+    /**
+     * Build the query
+     * Overload if you want to build of your own
+     *
+     * @return Builder
+     */
+    protected function getBuilder () : Builder {
+        $query = $this->db()->table($this->table())->where($this->condition())->select($this->columns());
 
         foreach ( $this->joins() as $join ) {
             $query->join(...$this->parseJoin($join));
@@ -94,7 +213,14 @@ abstract class DatabaseStorage
         return $query;
     }
 
-    private function parseJoin ($join) {
+    /**
+     * Prepare the join query
+     *
+     * @param array $join
+     *
+     * @return array
+     */
+    private function parseJoin (array $join) : array {
         $table = $join[0] ?? $join['table'];
         $first = $join[1] ?? $join['first'];
 
@@ -119,12 +245,11 @@ abstract class DatabaseStorage
 
     public function data () {
         return [
-            'table'         => $this->table(),
-            'file'          => $this->filename(),
-            'columns'       => $this->columns(),
-            'write_headers' => $this->writeHeaders(),
-            'headers'       => $this->headers(),
-            'data'          => $this->getBuilder(0)->toSql(),
+            'table'   => $this->table(),
+            'file'    => $this->filename(),
+            'columns' => $this->columns(),
+            'headers' => $this->headers(),
+            'data'    => $this->getBuilder()->toSql(),
         ];
     }
 }
