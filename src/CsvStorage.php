@@ -2,7 +2,11 @@
 
 namespace Dataset;
 
+use Illuminate\Database\Eloquent\Model;
 use League\Csv\Reader;
+use League\Csv\Statement;
+use League\Csv\TabularDataReader;
+use Throwable;
 
 abstract class CsvStorage
 {
@@ -47,10 +51,22 @@ abstract class CsvStorage
         return false;
     }
 
+    protected function entries () : array {
+        return [
+            $this->table() => function (Model $model, array $record, array $previous) : Model {
+                foreach ( $record as $field => $value ) {
+                    $model->{$field} = $value;
+                }
+
+                $model->save();
+
+                return $model;
+            },
+        ];
+    }
+
     /**
-     * If wants to write headers in the csv file,
-     * return the headers as array elements
-     * Otherwise, the column names will be used
+     * If wants to overwrite existing headers or provide headers if not available
      */
     protected function headers () : array {
         return [];
@@ -74,10 +90,6 @@ abstract class CsvStorage
         return true;
     }
 
-    private function extractColumnsForDb (array $required, array $record) : array {
-        return $record;
-    }
-
     /**
      * Process each record & insert into CSV
      *
@@ -85,14 +97,104 @@ abstract class CsvStorage
      *
      * @return array
      */
-    private function processRecord (array $record) : array {
+    private function processRecord (array $record) : bool {
         $record = array_merge($record, $this->mutation($record));
 
-        $headers = $this->headers();
-        // if the first element of the headers is integer, it's assumed to be integer based array
-        $csvColumns = is_integer(array_keys($headers)[0]) ? $headers : array_keys($headers);
+        $previous = [];
+        foreach ( $this->entries() as $table => $closure ) {
+            try {
+                $eloquent = new class ($table) extends Model
+                {
+                    public function __construct ($table) {
+                        parent::__construct([]);
+                        $this->table = $table;
+                        $this->guarded = [];
+                        $this->timestamps = false;
+                    }
+                };
 
-        return $this->extractColumnsForCsv($csvColumns, $record);
+                $previous[$table] = $closure($eloquent, $record, $previous);
+                unset($eloquent);
+            } catch ( Throwable $t ) {
+                if (true === $this->exitOnError()) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Process records in batch
+     *
+     * @param TabularDataReader $records
+     *
+     * @param int               $page
+     *
+     * @return bool
+     */
+    private function processRecordBatch (TabularDataReader $records, int $page) : bool {
+        /*$result = $this->exitOnEventResponse('iteration.batch', [
+            'batch' => $page,
+            'count' => $records->count(),
+            'limit' => $this->limit(),
+        ]);
+        if (!$result) {
+            return false;
+        }*/
+
+        foreach ( $records as $record ) {
+            if (false === $this->processRecord($record)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Process the entries of the CSV
+     */
+    private function processSource () : bool {
+        /*$result = $this->exitOnEventResponse('iteration.started', [
+            'uses'  => 'source',
+            'limit' => $this->limit(),
+        ]);
+        if (!$result) {
+            return false;
+        }*/
+
+        $shouldBreak = false;
+        $limit = $this->limit();
+        $page = 1;
+        $isCompleted = true;
+
+        do {
+            $offset = ($page - 1) * $limit;
+            $records = (new Statement())->limit($limit)->offset($offset)->process($this->reader, $this->headers());
+
+            /**
+             * if the result count is less than the limit. all the data are pulled
+             */
+            if ($records->count() < $limit) {
+                $shouldBreak = true;
+            }
+
+            if (false === $this->processRecordBatch($records, $page++)) {
+                /*$this->fireEvent('iteration.stopped', [
+                    'uses' => 'cursor',
+                ]);*/
+                $isCompleted = false;
+                break;
+            }
+        } while ( false === $shouldBreak );
+
+        /*$this->fireEvent('iteration.completed', [
+            'uses' => 'cursor',
+        ]);*/
+
+        return $isCompleted;
     }
 
     /**
@@ -109,24 +211,20 @@ abstract class CsvStorage
             return false;
         }
 
-        $records = $this->reader->getRecords();
-        foreach ( $records as $offset => $record ) {
-            $this->dd($offset, $record);
-            //$offset : represents the record offset
-            //var_export($record) returns something like
-            // array(
-            //  'john',
-            //  'doe',
-            //  'john.doe@example.com'
-            // );
-            //
+        if ($this->useTransaction()) {
+            $this->db()->beginTransaction();
         }
 
-        return true;
+        $response = $this->processSource();
+        if ($this->useTransaction()) {
+            $response ? $this->db()->commit() : $this->db()->rollBack();
+        }
+
+        return $response;
     }
 
     /**
-     * Instantiate the file writer
+     * Instantiate the file reader
      */
     private function prepareReader () : bool {
         /*$result = $this->exitOnEventResponse('reading', [ 'file' => $this->filename() ]);
