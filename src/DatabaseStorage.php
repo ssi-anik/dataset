@@ -5,6 +5,7 @@ namespace Dataset;
 use Closure;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Expression;
+use Illuminate\Support\Enumerable;
 use League\Csv\Writer;
 use Throwable;
 
@@ -81,8 +82,12 @@ abstract class DatabaseStorage
 
     /**
      * Return new data based on any calculation or mutate data if required
+     *
+     * @param array $record
+     *
+     * @return array
      */
-    protected function mutation ($record) : array {
+    protected function mutation (array $record) : array {
         return [];
     }
 
@@ -96,14 +101,14 @@ abstract class DatabaseStorage
     /**
      * Process records in batch
      *
-     * @param iterable $records
+     * @param Enumerable $records
      *
-     * @param int      $page
+     * @param int        $page
      *
      * @return bool
      * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
-    private function processRecordBatch (iterable $records, int $page) : bool {
+    private function processRecordBatch (Enumerable $records, int $page) : bool {
         $result = $this->exitOnEventResponse('iteration.batch', [
             'batch' => $page,
             'count' => $records->count(),
@@ -230,6 +235,8 @@ abstract class DatabaseStorage
 
                 return false;
             }
+
+            return true;
         });
 
         $this->fireEvent('iteration.completed', [
