@@ -256,7 +256,9 @@ abstract class DatabaseStorage
             return false;
         }
 
-        $this->createWriter();
+        if (false === $this->createWriter()) {
+            return false;
+        }
         $this->addFileHeader();
 
         return $this->fetchUsing() == 'cursor' ? $this->cursorBasedIteration() : $this->chunkBasedIteration();
