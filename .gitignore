@@ -1,5 +1,4 @@
 .idea/
 composer.lock
 vendor/
-legacy/
 docker-compose.yml
