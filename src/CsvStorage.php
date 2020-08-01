@@ -179,7 +179,7 @@ abstract class CsvStorage
      */
     private function processSource () : bool {
         $result = $this->exitOnEventResponse('iteration.started', [
-            'uses'  => 'source',
+            'uses'  => 'reader.source',
             'limit' => $this->limit(),
         ]);
         if (!$result) {
@@ -204,7 +204,7 @@ abstract class CsvStorage
 
             if (false === $this->processRecordBatch($records, $page++)) {
                 $this->fireEvent('iteration.stopped', [
-                    'uses' => 'source',
+                    'uses' => 'reader.source',
                 ]);
                 $isCompleted = false;
                 break;
@@ -212,7 +212,7 @@ abstract class CsvStorage
         } while ( false === $shouldBreak );
 
         $this->fireEvent('iteration.completed', [
-            'uses'      => 'source',
+            'uses'      => 'reader.source',
             'completed' => $isCompleted,
         ]);
 

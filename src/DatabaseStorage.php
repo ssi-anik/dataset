@@ -187,7 +187,7 @@ abstract class DatabaseStorage
      */
     private function cursorBasedIteration () : bool {
         $result = $this->exitOnEventResponse('iteration.started', [
-            'uses'  => 'cursor',
+            'uses'  => 'writer.cursor',
             'limit' => $this->limit(),
         ]);
         if (!$result) {
@@ -212,7 +212,7 @@ abstract class DatabaseStorage
 
             if (false === $this->processRecordBatch($records, $page++)) {
                 $this->fireEvent('iteration.stopped', [
-                    'uses' => 'cursor',
+                    'uses' => 'writer.cursor',
                 ]);
                 $isCompleted = false;
                 break;
@@ -220,7 +220,7 @@ abstract class DatabaseStorage
         } while ( false === $shouldBreak );
 
         $this->fireEvent('iteration.completed', [
-            'uses'      => 'cursor',
+            'uses'      => 'writer.cursor',
             'completed' => $isCompleted,
         ]);
 
@@ -232,7 +232,7 @@ abstract class DatabaseStorage
      */
     private function chunkBasedIteration () : bool {
         $result = $this->exitOnEventResponse('iteration.started', [
-            'uses'  => 'chunk',
+            'uses'  => 'writer.chunk',
             'limit' => $this->limit(),
         ]);
         if (!$result) {
@@ -242,7 +242,7 @@ abstract class DatabaseStorage
         $response = $this->getBuilder()->chunk($this->limit(), function ($records, $page) {
             if (false === $this->processRecordBatch($records, $page)) {
                 $this->fireEvent('iteration.stopped', [
-                    'uses' => 'chunk',
+                    'uses' => 'writer.chunk',
                 ]);
 
                 return false;
@@ -252,7 +252,7 @@ abstract class DatabaseStorage
         });
 
         $this->fireEvent('iteration.completed', [
-            'uses'      => 'chunk',
+            'uses'      => 'writer.chunk',
             'completed' => $response,
         ]);
 
