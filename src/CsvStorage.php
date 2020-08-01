@@ -131,6 +131,7 @@ abstract class CsvStorage
                 $previous[$table] = $closure($eloquent, $record, $previous);
                 unset($eloquent);
             } catch ( Throwable $t ) {
+                $this->raisedException($t);
                 $this->fireEvent('exception', [
                     'error'  => $t,
                     'record' => $record,

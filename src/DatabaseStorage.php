@@ -20,7 +20,7 @@ abstract class DatabaseStorage
      * Type for the events
      */
     protected function type () : string {
-        return 'reader';
+        return 'writer';
     }
 
     /**
@@ -137,6 +137,7 @@ abstract class DatabaseStorage
 
                 return true;
             } catch ( Throwable $t ) {
+                $this->raisedException($t);
                 $this->fireEvent('exception', [
                     'error'   => $t,
                     'records' => $results,

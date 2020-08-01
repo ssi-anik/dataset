@@ -8,6 +8,7 @@ use Illuminate\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Capsule\Manager;
 use Illuminate\Database\Connection;
+use Throwable;
 
 trait Support
 {
@@ -39,7 +40,7 @@ trait Support
      * @return bool
      * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
-    protected function exitOnEventResponse (string $event, array $parameters = []) {
+    protected function exitOnEventResponse (string $event, array $parameters = []) : bool {
         $result = $this->fireEvent($event, $parameters);
         if (false === $result) {
             $this->fireEvent('exiting', [ 'event' => $this->makeDatasetEvent($event) ]);
@@ -65,9 +66,9 @@ trait Support
         }
         $name = $this->makeDatasetEvent($event);
         $parameters = array_merge([ 'class' => get_class($this) ], $parameters);
-        $result = $this->container->make('events')->dispatch($name, $parameters);
+        $result = $this->container->make('events')->until($name, $parameters);
 
-        return $result !== false ? false : true;
+        return $result === false ? false : true;
     }
 
     /**
@@ -81,7 +82,7 @@ trait Support
      * Get table name of the class
      */
     protected function tableize () : string {
-        return $this->inflector()->tableize(get_class($this));
+        return $this->inflector()->tableize(class_basename($this));
     }
 
     /**
@@ -140,5 +141,14 @@ trait Support
      */
     protected function escapeCharacter () : string {
         return '\\';
+    }
+
+    /**
+     * An exception was raised. Log or do whatever wanted
+     *
+     * @param \Throwable $t
+     */
+    protected function raisedException (Throwable $t) : void {
+        return;
     }
 }
