@@ -5,6 +5,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class User extends CsvStorage
 {
+    /*protected function raisedException (Throwable $t) : void {
+        // log if required
+        return;
+    }*/
+
     protected function useTransaction () : bool {
         return false;
     }

@@ -4,6 +4,11 @@ use Dataset\CsvStorage;
 
 class Company extends CsvStorage
 {
+    /*protected function raisedException (Throwable $t) : void {
+        // log here if required
+        return;
+    }*/
+
     /*protected function exitOnError () : bool {
         return true;
     }*/

@@ -5,6 +5,11 @@ use Illuminate\Database\Query\Expression;
 
 class DbToCsv extends DatabaseStorage
 {
+    /*protected function raisedException (Throwable $t) : void {
+        // log if required
+        return;
+    }*/
+
     /*protected function condition () : Closure {
         return function ($q) {
             $q->where('name', 'ILIKE', '%Audrey%');

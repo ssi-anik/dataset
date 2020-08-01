@@ -26,4 +26,3 @@ var_dump($user->import());*/
 
 $user = new DbToCsv();
 var_dump($user->export());
-/*var_dump((new Encounter())->export());*/
