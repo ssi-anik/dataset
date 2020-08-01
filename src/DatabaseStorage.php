@@ -341,14 +341,7 @@ abstract class DatabaseStorage
         }
 
         $operator = $join[2] ?? $join['operator'] ?? '=';
-        $second = $join[3] ?? $join['second'] ?? null;
-        if (is_null($second)) {
-            if (strpos($first, $table) === 0) {
-                $second = $this->table() . '.' . $this->inflector()->singularize($table) . '_' . 'id';
-            } else {
-                $second = $table . '.' . 'id';
-            }
-        }
+        $second = $join[3] ?? $join['second'];
         $type = $join[4] ?? $join['type'] ?? 'inner';
         $where = $join[5] ?? $join['where'] ?? false;
 
