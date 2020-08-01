@@ -11,7 +11,6 @@ use Illuminate\Database\Connection;
 
 trait Support
 {
-
     protected $container;
 
     public function __construct (Container $container = null) {

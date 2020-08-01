@@ -51,6 +51,9 @@ abstract class CsvStorage
         return false;
     }
 
+    /**
+     * Self implementation will make capable of writing Eloquent & DB operations to insert or update row
+     */
     protected function entries () : array {
         return [
             $this->table() => function (Model $model, array $record, array $previous) : Model {
@@ -63,6 +66,10 @@ abstract class CsvStorage
                 return $model;
             },
         ];
+    }
+
+    protected function filterInput (array $record) : array {
+        return $record;
     }
 
     /**
@@ -98,7 +105,7 @@ abstract class CsvStorage
      * @return array
      */
     private function processRecord (array $record) : bool {
-        $record = array_merge($record, $this->mutation($record));
+        $record = $this->filterInput(array_merge($record, $this->mutation($record)));
 
         $previous = [];
         foreach ( $this->entries() as $table => $closure ) {
