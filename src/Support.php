@@ -18,7 +18,7 @@ trait Support
     }
 
     protected function makeDatasetEvent ($event) {
-        return 'dataset.' . $event;
+        return 'dataset.' . $this->type() . '.' . $event;
     }
 
     /**

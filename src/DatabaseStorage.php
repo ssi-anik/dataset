@@ -17,6 +17,13 @@ abstract class DatabaseStorage
     private $writer = null;
 
     /**
+     * Type for the events
+     */
+    protected function type () : string {
+        return 'reader';
+    }
+
+    /**
      * Filter out the result
      */
     protected function condition () : Closure {
@@ -130,6 +137,10 @@ abstract class DatabaseStorage
 
                 return true;
             } catch ( Throwable $t ) {
+                $this->fireEvent('exception', [
+                    'error'   => $t,
+                    'records' => $results,
+                ]);
                 if (false === $this->exitOnError()) {
                     return true;
                 }
@@ -208,7 +219,8 @@ abstract class DatabaseStorage
         } while ( false === $shouldBreak );
 
         $this->fireEvent('iteration.completed', [
-            'uses' => 'cursor',
+            'uses'      => 'cursor',
+            'completed' => $isCompleted,
         ]);
 
         return $isCompleted;
@@ -239,7 +251,8 @@ abstract class DatabaseStorage
         });
 
         $this->fireEvent('iteration.completed', [
-            'uses' => 'chunk',
+            'uses'      => 'chunk',
+            'completed' => $response,
         ]);
 
         return $response;
@@ -266,7 +279,7 @@ abstract class DatabaseStorage
      * Instantiate the file writer
      */
     private function prepareWriter () : bool {
-        $result = $this->exitOnEventResponse('creating', [ 'file' => $this->filename() ]);
+        $result = $this->exitOnEventResponse('preparing_writer', [ 'file' => $this->filename() ]);
         if (!$result) {
             return false;
         }

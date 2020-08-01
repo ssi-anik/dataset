@@ -16,6 +16,13 @@ abstract class CsvStorage
     private $reader = null;
 
     /**
+     * Type for the events
+     */
+    protected function type () : string {
+        return 'reader';
+    }
+
+    /**
      * If the document contains any header, position of the header
      */
     protected function headerOffset () : ?int {
@@ -102,7 +109,8 @@ abstract class CsvStorage
      *
      * @param array $record
      *
-     * @return array
+     * @return bool
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
     private function processRecord (array $record) : bool {
         $record = $this->filterInput(array_merge($record, $this->mutation($record)));
@@ -123,6 +131,10 @@ abstract class CsvStorage
                 $previous[$table] = $closure($eloquent, $record, $previous);
                 unset($eloquent);
             } catch ( Throwable $t ) {
+                $this->fireEvent('exception', [
+                    'error'  => $t,
+                    'record' => $record,
+                ]);
                 if (true === $this->exitOnError()) {
                     return false;
                 }
@@ -140,16 +152,17 @@ abstract class CsvStorage
      * @param int               $page
      *
      * @return bool
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
     private function processRecordBatch (TabularDataReader $records, int $page) : bool {
-        /*$result = $this->exitOnEventResponse('iteration.batch', [
+        $result = $this->exitOnEventResponse('iteration.batch', [
             'batch' => $page,
             'count' => $records->count(),
             'limit' => $this->limit(),
         ]);
         if (!$result) {
             return false;
-        }*/
+        }
 
         foreach ( $records as $record ) {
             if (false === $this->processRecord($record)) {
@@ -164,13 +177,13 @@ abstract class CsvStorage
      * Process the entries of the CSV
      */
     private function processSource () : bool {
-        /*$result = $this->exitOnEventResponse('iteration.started', [
+        $result = $this->exitOnEventResponse('iteration.started', [
             'uses'  => 'source',
             'limit' => $this->limit(),
         ]);
         if (!$result) {
             return false;
-        }*/
+        }
 
         $shouldBreak = false;
         $limit = $this->limit();
@@ -189,17 +202,18 @@ abstract class CsvStorage
             }
 
             if (false === $this->processRecordBatch($records, $page++)) {
-                /*$this->fireEvent('iteration.stopped', [
-                    'uses' => 'cursor',
-                ]);*/
+                $this->fireEvent('iteration.stopped', [
+                    'uses' => 'source',
+                ]);
                 $isCompleted = false;
                 break;
             }
         } while ( false === $shouldBreak );
 
-        /*$this->fireEvent('iteration.completed', [
-            'uses' => 'cursor',
-        ]);*/
+        $this->fireEvent('iteration.completed', [
+            'uses'      => 'source',
+            'completed' => $isCompleted,
+        ]);
 
         return $isCompleted;
     }
@@ -209,10 +223,10 @@ abstract class CsvStorage
      * Import the result set into the database table
      */
     public function import () : bool {
-        /*$result = $this->exitOnEventResponse('starting');
+        $result = $this->exitOnEventResponse('starting');
         if (!$result) {
             return false;
-        }*/
+        }
 
         if (false === $this->prepareReader()) {
             return false;
@@ -234,10 +248,10 @@ abstract class CsvStorage
      * Instantiate the file reader
      */
     private function prepareReader () : bool {
-        /*$result = $this->exitOnEventResponse('reading', [ 'file' => $this->filename() ]);
+        $result = $this->exitOnEventResponse('preparing_reader', [ 'file' => $this->filename() ]);
         if (!$result) {
             return false;
-        }*/
+        }
 
         $this->reader = Reader::createFromPath($this->filename(), $this->fileOpenMode());
         $this->reader->setDelimiter($this->delimiterCharacter());
