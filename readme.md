@@ -2,13 +2,13 @@ anik/dataset
 ---
 `anik/dataset` is a PHP package for importing & exporting data within CSV & Database. You can use joins from multiple tables. Create new columns for CSV, based on some calculation on available data. You don't need to put extra pressure on your database anymore. Dataset supports all the databases which are supported by Laravel/Lumen. Because, internally it uses Laravel's database package.
 
-#### Installation
+### Installation
 To install via composer, type 
 ```bash
 composer require "anik/dataset" "^3.0"
 ```
 
-#### Examples
+### Examples
 A few examples are given in examples directory.
 
 ### Documentation
