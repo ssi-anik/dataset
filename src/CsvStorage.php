@@ -254,19 +254,28 @@ abstract class CsvStorage
             return false;
         }
 
-        $this->reader = Reader::createFromPath($this->filename(), $this->fileOpenMode());
-        $this->reader->setDelimiter($this->delimiterCharacter());
-        $this->reader->setEnclosure($this->enclosureCharacter());
-        $this->reader->setEscape($this->escapeCharacter());
-        $this->reader->setHeaderOffset($this->headerOffset());
-        $this->skipEmptyRecord() ? $this->reader->skipEmptyRecords() : $this->reader->includeEmptyRecords();
+        $this->reader = $this->getReader();
 
-        if ($this->reader->supportsStreamFilter() && ($filters = $this->streamFilters())) {
+        return true;
+    }
+
+    /**
+     * Get the Reader instance
+     */
+    protected function getReader () : Reader {
+        $reader = Reader::createFromPath($this->filename(), $this->fileOpenMode());
+        $reader->setDelimiter($this->delimiterCharacter());
+        $reader->setEnclosure($this->enclosureCharacter());
+        $reader->setEscape($this->escapeCharacter());
+        $reader->setHeaderOffset($this->headerOffset());
+        $this->skipEmptyRecord() ? $reader->skipEmptyRecords() : $reader->includeEmptyRecords();
+
+        if ($reader->supportsStreamFilter() && ($filters = $this->streamFilters())) {
             foreach ( $filters as $filter ) {
-                $this->reader->addStreamFilter($filter);
+                $reader->addStreamFilter($filter);
             }
         }
 
-        return true;
+        return $reader;
     }
 }

@@ -285,13 +285,22 @@ abstract class DatabaseStorage
             return false;
         }
 
-        $this->writer = Writer::createFromPath($this->filename(), $this->fileOpenMode());
-        $this->writer->setDelimiter($this->delimiterCharacter());
-        $this->writer->setEnclosure($this->enclosureCharacter());
-        $this->writer->setEscape($this->escapeCharacter());
+        $this->writer = $this->getWriter();
         $this->addFileHeader();
 
         return true;
+    }
+
+    /**
+     * Get the writer instance
+     */
+    protected function getWriter () : Writer {
+        $writer = Writer::createFromPath($this->filename(), $this->fileOpenMode());
+        $writer->setDelimiter($this->delimiterCharacter());
+        $writer->setEnclosure($this->enclosureCharacter());
+        $writer->setEscape($this->escapeCharacter());
+
+        return $writer;
     }
 
     /**
