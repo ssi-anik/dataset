@@ -7,6 +7,6 @@ class CompanyProvider extends BaseCsvStorageProvider
     }
 
     protected function filename () : string {
-        return empty(static::$FILENAME) ? 'companies' : static::$TABLE;
+        return empty(static::$FILENAME) ? __DIR__ . '/companies.csv' : static::$FILENAME;
     }
 }
