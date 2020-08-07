@@ -163,8 +163,13 @@ abstract class DatabaseStorage
         $record = array_merge($record, $this->mutation($record));
 
         $headers = $this->headers();
-        // if the first element of the headers is integer, it's assumed to be integer based array
-        $csvColumns = is_integer(array_keys($headers)[0]) ? $headers : array_keys($headers);
+
+        $csvColumns = [];
+        // if user has provided the headers
+        if ($headers) {
+            // if the first element of the headers is integer, it's assumed to be integer based array
+            $csvColumns = is_integer(array_keys($headers)[0]) ? $headers : array_keys($headers);
+        }
 
         return $this->extractColumnsForCsv($csvColumns, $record);
     }
