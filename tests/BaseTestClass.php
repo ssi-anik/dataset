@@ -19,13 +19,8 @@ abstract class BaseTestClass extends TestCase
 
     public static function tearDownAfterClass () : void {
         parent::tearDownAfterClass();
-        unlink('./tests/dataset-default.sqlite');
-        unlink('./tests/dataset-sqlite.sqlite');
-    }
-
-    protected function tearDown () : void {
-        parent::tearDown();
-        $this->rollbackDatabase();
+        /*unlink('./tests/dataset-default.sqlite');
+        unlink('./tests/dataset-sqlite.sqlite');*/
     }
 
     protected function setUp () : void {
@@ -35,6 +30,11 @@ abstract class BaseTestClass extends TestCase
         $this->bindInContainer('events', $this->dispatcher);
         $this->setupDatabase();
         $this->migrateDatabase();
+    }
+
+    protected function tearDown () : void {
+        parent::tearDown();
+        $this->rollbackDatabase();
     }
 
     protected function setUpContainer () {
