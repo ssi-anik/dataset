@@ -130,10 +130,16 @@ class CsvStorageTest extends BaseTestClass
         }
 
         if ($duplication) {
-            foreach ( range(1, $duplicationCount) as $index ) {
-                $row = $data[array_rand($data)];
-                $row[4] = $faker->e164PhoneNumber;
-                $row[5] = $faker->companyEmail;
+            foreach ( (array) array_rand($data, $duplicationCount) as $index ) {
+                $fromExisting = $data[$index];
+                $row = [
+                    $fromExisting[0],
+                    $faker->randomNumber(2),
+                    $faker->company,
+                    $faker->streetAddress,
+                    $faker->e164PhoneNumber,
+                    $faker->companyEmail,
+                ];
 
                 $data[] = $row;
                 $rows[] = implode($delimiter, $row);
@@ -445,5 +451,56 @@ class CsvStorageTest extends BaseTestClass
         $this->assertTrue(Manager::table('members')->count() == 20);
         $this->assertTrue(Manager::table('phones')->count() == 20);
         $this->assertTrue(Manager::table('emails')->count() == 20);
+    }
+
+    public function testMultipleTableEntriesCheckingDuplicateBeforeEntry () {
+        $this->generateMembersData([
+            'lines'             => 50,
+            'duplication'       => true,
+            'duplication_count' => 5,
+        ]);
+        BaseCsvStorageProvider::$ENTRIES = true;
+
+        $this->getMemberProvider()->addEntries(function () {
+            return [
+                'members' => function (Model $model, array $record) {
+                    // checks if any row exists with name,
+                    $member = Manager::table('members')->where('name', $record['name'])->first();
+                    if ($member) {
+                        $model->id = $member->id;
+                        $model->exists = true;
+                    }
+
+                    $model->name = $record['name'];
+                    $model->age = $record['age'];
+                    $model->created_at = date('Y-m-d H:i:s');
+                    $model->updated_at = date('Y-m-d H:i:s');
+
+                    $model->save();
+
+                    return $model;
+                },
+                'phones'  => function (Model $model, array $record, array $previous) {
+                    $member = $previous['members'];
+
+                    $model->member_id = $member->id;
+                    $model->number = $record['phone'];
+                    $model->save();
+
+                    return $model;
+                },
+                'emails'  => function (Model $model, array $record, array $previous) {
+                    $model->member_id = $previous['members']->id;
+                    $model->email = $record['email'];
+                    $model->save();
+
+                    return $model;
+                },
+            ];
+        })->import();
+
+        $this->assertTrue(Manager::table('members')->count() == 50);
+        $this->assertTrue(Manager::table('phones')->count() == 55);
+        $this->assertTrue(Manager::table('emails')->count() == 55);
     }
 }
