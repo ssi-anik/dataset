@@ -68,7 +68,7 @@ abstract class BaseTestClass extends TestCase
         foreach ( $connections as $connection ) {
             Manager::schema($connection)->dropIfExists('companies');
             Manager::schema($connection)->dropIfExists('company');
-            Manager::schema($connection)->dropIfExists('users');
+            Manager::schema($connection)->dropIfExists('members');
             Manager::schema($connection)->dropIfExists('phones');
             Manager::schema($connection)->dropIfExists('emails');
         }
@@ -92,7 +92,7 @@ abstract class BaseTestClass extends TestCase
                 $table->string('slug');
             });
 
-            Manager::schema($connection)->create('users', function (Blueprint $table) {
+            Manager::schema($connection)->create('members', function (Blueprint $table) {
                 $table->increments('id');
                 $table->string('name');
                 $table->smallInteger('age');
@@ -101,13 +101,13 @@ abstract class BaseTestClass extends TestCase
 
             Manager::schema($connection)->create('phones', function (Blueprint $table) {
                 $table->increments('id');
-                $table->smallInteger('user_id');
+                $table->smallInteger('member_id');
                 $table->string('number');
             });
 
             Manager::schema($connection)->create('emails', function (Blueprint $table) {
                 $table->increments('id');
-                $table->smallInteger('user_id');
+                $table->smallInteger('member_id');
                 $table->string('email');
             });
         }
