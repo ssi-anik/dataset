@@ -4,7 +4,6 @@ use Faker\Factory;
 use Illuminate\Container\Container;
 use Illuminate\Database\Capsule\Manager;
 use Illuminate\Database\Capsule\Manager as Capsule;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Events\Dispatcher;
 use PHPUnit\Framework\TestCase;
 
@@ -42,8 +41,8 @@ abstract class BaseTestClass extends TestCase
         $this->container = new Container();
     }
 
-    protected function setupDatabase () {
-        $connections = [
+    final protected function getDatabaseConnections () {
+        return [
             'default' => [
                 'driver'   => 'sqlite',
                 'database' => __DIR__ . '/dataset-default.sqlite',
@@ -54,6 +53,10 @@ abstract class BaseTestClass extends TestCase
                 'database' => __DIR__ . '/dataset-sqlite.sqlite',
             ],
         ];
+    }
+
+    protected function setupDatabase () {
+        $connections = $this->getDatabaseConnections();
 
         $this->capsule = new Capsule($this->container);
         foreach ( $connections as $name => $config ) {
@@ -63,49 +66,9 @@ abstract class BaseTestClass extends TestCase
         $this->capsule->bootEloquent();
     }
 
-    protected function rollbackDatabase () {
-        $connections = [ 'default', 'sqlite' ];
+    abstract protected function rollbackDatabase ();
 
-        foreach ( $connections as $connection ) {
-            $this->rollbackMigration($connection, 'companies');
-            $this->rollbackMigration($connection, 'members');
-            $this->rollbackMigration($connection, 'phones');
-            $this->rollbackMigration($connection, 'emails');
-        }
-    }
-
-    protected function migrateDatabase () {
-        $this->rollbackDatabase();
-        $connections = [ 'default', 'sqlite' ];
-
-        foreach ( $connections as $connection ) {
-            $this->createTableMigration($connection, 'companies', function (Blueprint $table) {
-                $table->increments('id');
-                $table->string('name');
-                $table->string('image_url');
-                $table->string('slug');
-            });
-
-            $this->createTableMigration($connection, 'members', function (Blueprint $table) {
-                $table->increments('id');
-                $table->string('name');
-                $table->smallInteger('age');
-                $table->timestamps();
-            });
-
-            $this->createTableMigration($connection, 'phones', function (Blueprint $table) {
-                $table->increments('id');
-                $table->smallInteger('member_id');
-                $table->string('number');
-            });
-
-            $this->createTableMigration($connection, 'emails', function (Blueprint $table) {
-                $table->increments('id');
-                $table->smallInteger('member_id');
-                $table->string('email');
-            });
-        }
-    }
+    abstract protected function migrateDatabase ();
 
     protected function createTableMigration ($connection, $table, $callback) {
         Manager::schema($connection)->create($table, $callback);

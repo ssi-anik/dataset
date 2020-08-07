@@ -39,6 +39,50 @@ class CsvStorageTest extends BaseTestClass
         BaseCsvStorageProvider::$HAS_FILE_READER = false;
     }
 
+    protected function rollbackDatabase () {
+        $connections = array_keys($this->getDatabaseConnections());
+
+        foreach ( $connections as $connection ) {
+            $this->rollbackMigration($connection, 'companies');
+            $this->rollbackMigration($connection, 'members');
+            $this->rollbackMigration($connection, 'phones');
+            $this->rollbackMigration($connection, 'emails');
+        }
+    }
+
+    protected function migrateDatabase () {
+        $this->rollbackDatabase();
+        $connections = array_keys($this->getDatabaseConnections());
+
+        foreach ( $connections as $connection ) {
+            $this->createTableMigration($connection, 'companies', function (Blueprint $table) {
+                $table->increments('id');
+                $table->string('name');
+                $table->string('image_url');
+                $table->string('slug');
+            });
+
+            $this->createTableMigration($connection, 'members', function (Blueprint $table) {
+                $table->increments('id');
+                $table->string('name');
+                $table->smallInteger('age');
+                $table->timestamps();
+            });
+
+            $this->createTableMigration($connection, 'phones', function (Blueprint $table) {
+                $table->increments('id');
+                $table->smallInteger('member_id');
+                $table->string('number');
+            });
+
+            $this->createTableMigration($connection, 'emails', function (Blueprint $table) {
+                $table->increments('id');
+                $table->smallInteger('member_id');
+                $table->string('email');
+            });
+        }
+    }
+
     protected function getCompanyProvider () {
         return (new CompanyProvider($this->container))->addMutation(function ($record) {
             return [ 'slug' => preg_replace('/[^a-z0-9]/i', '-', $record['address']) ];
