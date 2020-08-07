@@ -240,4 +240,17 @@ class CsvStorageTest extends BaseTestClass
 
         $this->assertTrue(Manager::connection('sqlite')->table('companies')->count() == $count);
     }
+
+    public function testReadDifferentCsvDelimiter () {
+        $count = 10;
+        $this->generateCompaniesData([ 'lines' => $count, 'delimiter' => '|' ]);
+        BaseCsvStorageProvider::$DELIMITER = '|';
+        $this->getCompanyProvider()->addMutation(function ($record) {
+            return [
+                'slug' => str_replace(' ', '-', strtolower($this->getFaker()->sentence())),
+            ];
+        })->import();
+
+        $this->assertTrue(Manager::table('companies')->count() == $count);
+    }
 }
