@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Capsule\Manager;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 
 class CsvStorageTest extends BaseTestClass
@@ -9,7 +10,6 @@ class CsvStorageTest extends BaseTestClass
         parent::tearDown();
         // delete the generated csv files
         $files = [
-            __DIR__ . '/Providers/company.csv',
             __DIR__ . '/Providers/companies.csv',
             __DIR__ . '/Providers/members.csv',
         ];
@@ -27,7 +27,7 @@ class CsvStorageTest extends BaseTestClass
         BaseCsvStorageProvider::$STREAM_FILTERS = [];
         BaseCsvStorageProvider::$LIMIT = 20;
         BaseCsvStorageProvider::$USE_TRANSACTION = true;
-        BaseCsvStorageProvider::$ENTRIES = [];
+        BaseCsvStorageProvider::$ENTRIES = false;
         BaseCsvStorageProvider::$HEADERS = [];
         BaseCsvStorageProvider::$CONNECTION = 'default';
         BaseCsvStorageProvider::$TABLE = '';
@@ -97,8 +97,10 @@ class CsvStorageTest extends BaseTestClass
         $emptyLine = $config['empty_line'] ?? false;
         $modulo = $config['modulo'] ?? 8;
         $lines = $config['lines'] ?? 10;
-        $skipHeader = $config['skip_header'] ?? true;
+        $skipHeader = $config['skip_header'] ?? false;
         $locale = $config['locale'] ?? 'en_US';
+        $duplication = $config['duplication'] ?? false;
+        $duplicationCount = $config['duplication_count'] ?? 1;
         $faker = $this->getFaker($locale);
 
         $headers = [ 'name', 'age', 'company', 'address', 'phone', 'email', ];
@@ -124,6 +126,17 @@ class CsvStorageTest extends BaseTestClass
             if ($emptyLine && ($i % $modulo === 0)) {
                 $data[] = [];
                 $rows[] = '';
+            }
+        }
+
+        if ($duplication) {
+            foreach ( range(1, $duplicationCount) as $index ) {
+                $row = $data[array_rand($data)];
+                $row[4] = $faker->e164PhoneNumber;
+                $row[5] = $faker->companyEmail;
+
+                $data[] = $row;
+                $rows[] = implode($delimiter, $row);
             }
         }
 
@@ -394,5 +407,43 @@ class CsvStorageTest extends BaseTestClass
 
         $this->getCompanyProvider()->import();
         $this->assertTrue(0 == Manager::table('companies')->count());
+    }
+
+    public function testMultipleTableEntries () {
+        $this->generateMembersData([ 'lines' => 20, ]);
+        BaseCsvStorageProvider::$ENTRIES = true;
+        $this->getMemberProvider()->addEntries(function () {
+            return [
+                'members' => function (Model $model, array $record) {
+                    $model->name = $record['name'];
+                    $model->age = $record['age'];
+                    $model->created_at = date('Y-m-d H:i:s');
+                    $model->updated_at = date('Y-m-d H:i:s');
+                    $model->save();
+
+                    return $model;
+                },
+                'phones'  => function (Model $model, array $record, array $previous) {
+                    $member = $previous['members'];
+
+                    $model->member_id = $member->id;
+                    $model->number = $record['phone'];
+                    $model->save();
+
+                    return $model;
+                },
+                'emails'  => function (Model $model, array $record, array $previous) {
+                    $model->member_id = $previous['members']->id;
+                    $model->email = $record['email'];
+                    $model->save();
+
+                    return $model;
+                },
+            ];
+        })->import();
+
+        $this->assertTrue(Manager::table('members')->count() == 20);
+        $this->assertTrue(Manager::table('phones')->count() == 20);
+        $this->assertTrue(Manager::table('emails')->count() == 20);
     }
 }

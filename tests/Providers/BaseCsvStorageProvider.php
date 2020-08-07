@@ -12,7 +12,7 @@ class BaseCsvStorageProvider extends CsvStorage
     static $STREAM_FILTERS = [];
     static $LIMIT = 20;
     static $USE_TRANSACTION = true;
-    static $ENTRIES = [];
+    static $ENTRIES = false;
     static $HEADERS = [];
     static $CONNECTION = 'default';
     static $TABLE = '';
@@ -25,6 +25,7 @@ class BaseCsvStorageProvider extends CsvStorage
 
     private $filter = null;
     private $mutate = null;
+    private $entries = null;
 
     protected function type () : string {
         return empty(static::$TYPE) ? parent::type() : static::$TYPE;
@@ -48,12 +49,23 @@ class BaseCsvStorageProvider extends CsvStorage
         return $this;
     }
 
+    // provides dynamically adding entries function
+    public function addEntries ($callback) {
+        $this->entries = $callback;
+
+        return $this;
+    }
+
     protected function filterThrough ($record) {
         return $this->filter ? call_user_func_array($this->filter, [ $record ]) : $record;
     }
 
     protected function mutateThrough ($record) {
         return $this->mutate ? call_user_func_array($this->mutate, [ $record ]) : [];
+    }
+
+    protected function entriesThrough () {
+        return $this->entries ? call_user_func_array($this->entries, []) : [];
     }
 
     protected function getReaderFrom () : Reader {
@@ -101,7 +113,7 @@ DATA
     }
 
     protected function entries () : array {
-        return empty(static::$ENTRIES) ? parent::entries() : static::$ENTRIES;
+        return false === static::$ENTRIES ? parent::entries() : $this->entriesThrough();
     }
 
     protected function filterInput (array $record) : array {
