@@ -37,6 +37,13 @@ abstract class CsvStorage
     }
 
     /**
+     * Opens in read mode to stop accidentally write something
+     */
+    protected function fileOpenMode () {
+        return 'r';
+    }
+
+    /**
      * Array of stream filters
      * https://csv.thephpleague.com/9.0/connections/filters/#adding-a-stream-filter
      */
