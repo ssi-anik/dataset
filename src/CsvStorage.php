@@ -125,11 +125,12 @@ abstract class CsvStorage
         $previous = [];
         foreach ( $this->entries() as $table => $closure ) {
             try {
-                $eloquent = new class ($table) extends Model
+                $eloquent = new class ($table, $this->connection()) extends Model
                 {
-                    public function __construct ($table) {
+                    public function __construct ($table, $connection) {
                         parent::__construct([]);
                         $this->table = $table;
+                        $this->connection = $connection;
                         $this->guarded = [];
                         $this->timestamps = false;
                     }
