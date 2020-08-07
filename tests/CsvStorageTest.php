@@ -33,6 +33,7 @@ class CsvStorageTest extends BaseTestClass
         BaseCsvStorageProvider::$FILENAME = '';
         BaseCsvStorageProvider::$DELIMITER = ',';
         BaseCsvStorageProvider::$EXCEPTION_RECEIVED = false;
+        BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER = 0;
         BaseCsvStorageProvider::$FILE_OPEN_MODE = 'r';
         BaseCsvStorageProvider::$HAS_FILE_READER = false;
     }
@@ -293,5 +294,27 @@ class CsvStorageTest extends BaseTestClass
                 'slug' => $record['name'],
             ];
         })->import());
+    }
+
+    public function testDoNotSkipEmptyLines () {
+        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 5 ]);
+        BaseCsvStorageProvider::$SKIP_EMPTY = false;
+
+        $this->assertFalse($this->getCompanyProvider()->import());
+    }
+
+    public function testSkipEmptyLine () {
+        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 9 ]);
+
+        $this->getCompanyProvider()->import();
+        $this->assertTrue(BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER == 0);
+    }
+
+    public function testExceptionIsReceivedByMethod () {
+        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 9 ]);
+        BaseCsvStorageProvider::$SKIP_EMPTY = false;
+
+        $this->getCompanyProvider()->import();
+        $this->assertTrue(BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER > 0);
     }
 }

@@ -19,6 +19,7 @@ class BaseCsvStorageProvider extends CsvStorage
     static $FILENAME = '';
     static $DELIMITER = ',';
     static $EXCEPTION_RECEIVED = false;
+    static $HANDLED_EXCEPTION_COUNTER = 0;
     static $FILE_OPEN_MODE = 'r';
     static $HAS_FILE_READER = false;
 
@@ -138,6 +139,7 @@ DATA
     protected function raisedException (Throwable $t) : void {
         var_dump($t->getMessage());
         static::$EXCEPTION_RECEIVED = true;
+        ++static::$HANDLED_EXCEPTION_COUNTER;
     }
 
 }
