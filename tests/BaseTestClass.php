@@ -75,6 +75,7 @@ abstract class BaseTestClass extends TestCase
     }
 
     protected function migrateDatabase () {
+        $this->rollbackDatabase();
         $connections = [ 'default', 'sqlite' ];
 
         foreach ( $connections as $connection ) {
