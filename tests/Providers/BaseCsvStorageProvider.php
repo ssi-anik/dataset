@@ -153,5 +153,4 @@ DATA
         static::$EXCEPTION_RECEIVED = true;
         ++static::$HANDLED_EXCEPTION_COUNTER;
     }
-
 }

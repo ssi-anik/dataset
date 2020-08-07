@@ -130,8 +130,11 @@ class CsvStorageTest extends BaseTestClass
         }
 
         if ($duplication) {
-            foreach ( (array) array_rand($data, $duplicationCount) as $index ) {
-                $fromExisting = $data[$index];
+            // sliced because, if the header is present, that can also be given at random
+            $slice = array_slice($data, 1);
+            foreach ( (array) array_rand($slice, $duplicationCount) as $index ) {
+                // index should always be + 1, because it's sliced from offset 1
+                $fromExisting = $data[$index + 1];
                 $row = [
                     $fromExisting[0],
                     $faker->randomNumber(2),
@@ -261,7 +264,7 @@ class CsvStorageTest extends BaseTestClass
         $this->rollbackMigration('default', 'company');
     }
 
-    public function testDifferentDBConnection () {
+    public function testDifferentDatabaseConnection () {
         $count = 25;
         $this->generateCompaniesData([ 'lines' => $count ]);
         BaseCsvStorageProvider::$CONNECTION = 'sqlite';
