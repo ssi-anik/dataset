@@ -231,4 +231,13 @@ class CsvStorageTest extends BaseTestClass
 
         $this->assertTrue(Manager::table($table)->count() == $count);
     }
+
+    public function testDifferentDBConnection () {
+        $count = 25;
+        $this->generateCompaniesData([ 'lines' => $count ]);
+        BaseCsvStorageProvider::$CONNECTION = 'sqlite';
+        $this->getCompanyProvider()->import();
+
+        $this->assertTrue(Manager::connection('sqlite')->table('companies')->count() == $count);
+    }
 }
