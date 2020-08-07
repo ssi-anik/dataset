@@ -37,7 +37,13 @@ class CsvStorageTest extends BaseTestClass
     }
 
     protected function getCompanyProvider () {
-        return new CompanyProvider($this->container);
+        return (new CompanyProvider($this->container))->addMutation(function ($record) {
+            return [ 'slug' => preg_replace('/[^a-z0-9]/i', '-', $record['address']) ];
+        })->addFilter(function ($record) {
+            unset($record['address']);
+
+            return $record;
+        });
     }
 
     protected function getMemberProvider () {
@@ -206,18 +212,7 @@ class CsvStorageTest extends BaseTestClass
             }
         });
 
-        $provider = $this->getCompanyProvider();
-
-        $provider->addFilter(function ($record) {
-            unset($record['address']);
-
-            return $record;
-        });
-        $provider->addMutation(function ($record) {
-            return [ 'slug' => preg_replace('/[^a-z0-9]/i', '-', $record['address']) ];
-        });
-
-        $result = $provider->import();
+        $result = $this->getCompanyProvider()->import();
 
         $this->assertTrue($filenameMatches);
         $this->assertTrue($result);
@@ -231,18 +226,7 @@ class CsvStorageTest extends BaseTestClass
         $this->generateCompaniesData([ 'lines' => $count ]);
         $table = 'company';
         BaseCsvStorageProvider::$TABLE = $table;
-        $provider = $this->getCompanyProvider();
-
-        $provider->addFilter(function ($record) {
-            unset($record['address']);
-
-            return $record;
-        });
-        $provider->addMutation(function ($record) {
-            return [ 'slug' => preg_replace('/[^a-z0-9]/i', '-', $record['address']) ];
-        });
-
-        $result = $provider->import();
+        $result = $this->getCompanyProvider()->import();
         $this->assertTrue($result);
 
         $this->assertTrue(Manager::table($table)->count() == $count);
