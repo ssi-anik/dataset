@@ -317,4 +317,13 @@ class CsvStorageTest extends BaseTestClass
         $this->getCompanyProvider()->import();
         $this->assertTrue(BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER > 0);
     }
+
+    public function testExitOnFailureIfFalse () {
+        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 2, 'lines' => 5 ]);
+        BaseCsvStorageProvider::$SKIP_EMPTY = false;
+        BaseCsvStorageProvider::$EXIT_ON_ERROR = false;
+
+        $this->getCompanyProvider()->import();
+        $this->assertTrue(BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER == 2);
+    }
 }
