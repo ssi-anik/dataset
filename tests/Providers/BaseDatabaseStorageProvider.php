@@ -166,7 +166,7 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
         return empty(static::$TABLE) ? parent::table() : static::$TABLE;
     }
 
-    protected function filename () : string {
+    public function filename () : string {
         return empty(static::$FILENAME) ? parent::filename() : static::$FILENAME;
     }
 

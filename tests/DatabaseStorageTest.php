@@ -8,6 +8,38 @@ class DatabaseStorageTest extends BaseTestClass
 {
     protected function tearDown () : void {
         parent::tearDown();
+
+        // cleanup the auto generated files
+        $files = [
+            __DIR__ . '/Providers/susers.csv',
+        ];
+        foreach ( $files as $file ) {
+            if (file_exists($file)) {
+                unlink($file);
+            }
+        }
+
+        BaseDatabaseStorageProvider::$TYPE = 'writer';
+        BaseDatabaseStorageProvider::$EXIT_ON_ERROR = true;
+        BaseDatabaseStorageProvider::$LIMIT = 50;
+        BaseDatabaseStorageProvider::$FETCH_USING = 'cursor';
+        BaseDatabaseStorageProvider::$CONDITION = false;
+        BaseDatabaseStorageProvider::$JOINS = false;
+        BaseDatabaseStorageProvider::$CUSTOM_BUILDER = false;
+        BaseDatabaseStorageProvider::$ORDER_BY = false;
+        BaseDatabaseStorageProvider::$ORDER_BY_DIRECTION = 'ASC';
+        BaseDatabaseStorageProvider::$COLUMNS = [];
+        BaseDatabaseStorageProvider::$HEADERS = [];
+        BaseDatabaseStorageProvider::$CONNECTION = 'default';
+        BaseDatabaseStorageProvider::$TABLE = '';
+        BaseDatabaseStorageProvider::$FILENAME = '';
+        BaseDatabaseStorageProvider::$DELIMITER = ',';
+        BaseDatabaseStorageProvider::$ESCAPE_CHARACTER = '\\';
+        BaseDatabaseStorageProvider::$ENCLOSE_CHARACTER = '"';
+        BaseDatabaseStorageProvider::$EXCEPTION_RECEIVED = false;
+        BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER = 0;
+        BaseDatabaseStorageProvider::$FILE_OPEN_MODE = 'w+';
+        BaseDatabaseStorageProvider::$HAS_FILE_WRITER = false;
     }
 
     protected function formatEventName ($name, $type = 'writer') {
@@ -72,12 +104,13 @@ class DatabaseStorageTest extends BaseTestClass
         $dateVariations = [ 0, 5, 7, 15, 30, 100, 150, 180 ];
         $dates = [];
         foreach ( $dateVariations as $variation ) {
-            $dates[] = $now->subDays($variation)->toDateTimeString();
+            $dates[] = (clone $now)->subDays($variation)->startOfHour()->toDateTimeString();
         }
 
         $data = [];
         foreach ( range(1, $rows) as $i ) {
-            $onDate = $dates[rand(0, count($dates)) - 1];
+            $onDate = $dates[rand(0, count($dates) - 1)];
+            // $onDate = $dates[array_rand($dates, 1)];
             $data[] = [
                 'name'       => $faker->name,
                 'email'      => $faker->companyEmail,
@@ -94,6 +127,33 @@ class DatabaseStorageTest extends BaseTestClass
 
     protected function getUserProvider () {
         return (new UserProvider($this->container));
+    }
+
+    private function getLinesFrom ($file, $lines = 1, array $config = []) {
+        $delimiter = $config['delimiter'] ?? ',';
+        $enclosure = $config['enclosure'] ?? '"';
+        $escape = $config['escape'] ?? '\\';
+
+        $data = [];
+        if (($handle = fopen($file, "r")) !== false) {
+            do {
+                if (($columns = fgetcsv($handle, 1024, $delimiter, $enclosure, $escape)) === false) {
+                    break;
+                }
+                $data[] = $columns;
+                if (--$lines <= 0) {
+                    break;
+                }
+            } while ( true );
+
+            fclose($handle);
+        }
+
+        return $data;
+    }
+
+    private function getNthLineFrom ($file, $line = 1, array $config = []) {
+        return $this->getLinesFrom($file, $line, $config)[$line - 1];
     }
 
     public function testEventDispatcherIsWorking () {
@@ -165,47 +225,21 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue($receivedNewType);
     }
 
-    /*public function testDifferentCsvFilename () {
-        $config = [
-            'name' => __DIR__ . '/test_company.csv',
-        ];
-
-        $this->generateCompaniesData($config);
-        BaseCsvStorageProvider::$FILENAME = $config['name'];
-        $event = $this->formatEventName('preparing_reader');
-        $filenameMatches = false;
-        $this->addEventListener($event, function (...$payload) use (&$filenameMatches, $config) {
-            if (isset($payload[1]) && $payload[1] == $config['name']) {
-                $filenameMatches = true;
-            }
-        });
-
-        $result = $this->getCompanyProvider()->export();
-
-        $this->assertTrue($filenameMatches);
-        $this->assertTrue($result);
-
-        // delete file
-        unlink($config['name']);
-    }
-
-    public function testDifferentTable () {
-        $this->createTableMigration('default', 'company', function (Blueprint $table) {
-            $table->increments('id');
-            $table->string('name');
-            $table->string('image_url');
-            $table->string('slug');
-        });
+    public function testDifferentTableName () {
         $count = 15;
-        $this->generateCompaniesData([ 'lines' => $count ]);
-        $table = 'company';
-        BaseCsvStorageProvider::$TABLE = $table;
-        $result = $this->getCompanyProvider()->export();
+        $this->seedUserTable([ 'lines' => $count ]);
+        $table = 'users';
+        BaseDatabaseStorageProvider::$TABLE = $table;
+        $provider = $this->getUserProvider();
+        $result = $provider->export();
         $this->assertTrue($result);
-
-        $this->assertTrue(Manager::table($table)->count() == $count);
-        $this->rollbackMigration('default', 'company');
+        $firstLine = $this->getNthLineFrom($provider->filename());
+        // no of columns are 6 in users table
+        $this->assertTrue(6 === count($firstLine));
+        file_exists($filename = __DIR__ . '/Providers/users.csv') ? unlink($filename) : null;
     }
+
+    /*
 
     public function testDifferentDatabaseConnection () {
         $count = 25;
