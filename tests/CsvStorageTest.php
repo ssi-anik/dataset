@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Capsule\Manager;
+use Illuminate\Database\Schema\Blueprint;
 
 class CsvStorageTest extends BaseTestClass
 {
@@ -224,6 +225,12 @@ class CsvStorageTest extends BaseTestClass
     }
 
     public function testDifferentTable () {
+        $this->createTableMigration('default', 'company', function (Blueprint $table) {
+            $table->increments('id');
+            $table->string('name');
+            $table->string('image_url');
+            $table->string('slug');
+        });
         $count = 15;
         $this->generateCompaniesData([ 'lines' => $count ]);
         $table = 'company';
@@ -232,6 +239,7 @@ class CsvStorageTest extends BaseTestClass
         $this->assertTrue($result);
 
         $this->assertTrue(Manager::table($table)->count() == $count);
+        $this->rollbackMigration('default', 'company');
     }
 
     public function testDifferentDBConnection () {

@@ -68,7 +68,6 @@ abstract class BaseTestClass extends TestCase
 
         foreach ( $connections as $connection ) {
             $this->rollbackMigration($connection, 'companies');
-            $this->rollbackMigration($connection, 'company');
             $this->rollbackMigration($connection, 'members');
             $this->rollbackMigration($connection, 'phones');
             $this->rollbackMigration($connection, 'emails');
@@ -81,13 +80,6 @@ abstract class BaseTestClass extends TestCase
 
         foreach ( $connections as $connection ) {
             $this->createTableMigration($connection, 'companies', function (Blueprint $table) {
-                $table->increments('id');
-                $table->string('name');
-                $table->string('image_url');
-                $table->string('slug');
-            });
-
-            $this->createTableMigration($connection, 'company', function (Blueprint $table) {
                 $table->increments('id');
                 $table->string('name');
                 $table->string('image_url');
