@@ -1,14 +1,16 @@
 <?php
 
+use Illuminate\Database\Capsule\Manager;
+
 class CsvStorageTest extends BaseTestClass
 {
     protected function tearDown () : void {
         parent::tearDown();
         // delete the generated csv files
         $files = [
-            __DIR__ . '/company.csv',
-            __DIR__ . '/companies.csv',
-            __DIR__ . '/members.csv',
+            __DIR__ . '/Providers/company.csv',
+            __DIR__ . '/Providers/companies.csv',
+            __DIR__ . '/Providers/members.csv',
         ];
         foreach ( $files as $file ) {
             if (file_exists($file)) {
@@ -43,7 +45,7 @@ class CsvStorageTest extends BaseTestClass
     }
 
     protected function generateCompaniesData (array $config = []) {
-        $filename = $config['name'] ?? __DIR__ . '/companies.csv';
+        $filename = $config['name'] ?? __DIR__ . '/Providers/companies.csv';
         $delimiter = $config['delimiter'] ?? ',';
         $emptyLine = $config['empty_line'] ?? false;
         $modulo = $config['modulo'] ?? 8;
@@ -81,7 +83,7 @@ class CsvStorageTest extends BaseTestClass
     }
 
     protected function generateMembersData (array $config = []) {
-        $filename = $config['name'] ?? __DIR__ . '/members.csv';
+        $filename = $config['name'] ?? __DIR__ . '/Providers/members.csv';
         $delimiter = $config['delimiter'] ?? ',';
         $emptyLine = $config['empty_line'] ?? false;
         $modulo = $config['modulo'] ?? 8;
@@ -222,5 +224,27 @@ class CsvStorageTest extends BaseTestClass
 
         // delete file
         unlink($config['name']);
+    }
+
+    public function testDifferentTable () {
+        $count = 15;
+        $this->generateCompaniesData([ 'lines' => $count ]);
+        $table = 'company';
+        BaseCsvStorageProvider::$TABLE = $table;
+        $provider = $this->getCompanyProvider();
+
+        $provider->addFilter(function ($record) {
+            unset($record['address']);
+
+            return $record;
+        });
+        $provider->addMutation(function ($record) {
+            return [ 'slug' => preg_replace('/[^a-z0-9]/i', '-', $record['address']) ];
+        });
+
+        $result = $provider->import();
+        $this->assertTrue($result);
+
+        $this->assertTrue(Manager::table($table)->count() == $count);
     }
 }

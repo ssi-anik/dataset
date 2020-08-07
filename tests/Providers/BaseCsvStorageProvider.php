@@ -34,10 +34,15 @@ class BaseCsvStorageProvider extends CsvStorage
     // provides dynamically adding filter function
     public function addFilter ($callback) {
         $this->filter = $callback;
+
+        return $this;
     }
 
+    // provides dynamically adding mutation function
     public function addMutation ($callback) {
         $this->mutate = $callback;
+
+        return $this;
     }
 
     protected function filterThrough ($record) {
