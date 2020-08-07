@@ -226,17 +226,34 @@ class DatabaseStorageTest extends BaseTestClass
     }
 
     public function testDifferentTableName () {
+        $table = 'new-user-table';
         $count = 15;
-        $this->seedUserTable([ 'lines' => $count ]);
-        $table = 'users';
+
+        $this->createTableMigration('default', $table, function (Blueprint $table) {
+            $table->increments('id');
+            $table->string('name');
+            $table->string('number');
+            $table->string('email');
+            $table->timestamps();
+        });
+
+        $this->seedUserTable([ 'rows' => $count, 'table' => $table ]);
+
         BaseDatabaseStorageProvider::$TABLE = $table;
+
         $provider = $this->getUserProvider();
+
+        $filename = $provider->filename();
+
         $result = $provider->export();
         $this->assertTrue($result);
-        $firstLine = $this->getNthLineFrom($provider->filename());
+
+        $firstLine = $this->getNthLineFrom($filename);
         // no of columns are 6 in users table
         $this->assertTrue(6 === count($firstLine));
-        file_exists($filename = __DIR__ . '/Providers/users.csv') ? unlink($filename) : null;
+
+        $this->rollbackMigration('default', 'new-user-table');
+        unlink($filename);
     }
 
     /*
