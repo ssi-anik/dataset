@@ -11,6 +11,18 @@ abstract class BaseTestClass extends TestCase
 {
     protected $container, $dispatcher, $capsule;
 
+    public static function setUpBeforeClass () : void {
+        parent::setUpBeforeClass();
+        touch('./tests/dataset-default.sqlite');
+        touch('./tests/dataset-sqlite.sqlite');
+    }
+
+    public static function tearDownAfterClass () : void {
+        parent::tearDownAfterClass();
+        unlink('./tests/dataset-default.sqlite');
+        unlink('./tests/dataset-sqlite.sqlite');
+    }
+
     protected function tearDown () : void {
         parent::tearDown();
         $this->rollbackDatabase();
