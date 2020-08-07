@@ -8,6 +8,7 @@ use Illuminate\Container\Container;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Capsule\Manager;
 use Illuminate\Database\Connection;
+use ReflectionClass;
 use Throwable;
 
 trait Support
@@ -107,10 +108,17 @@ trait Support
     }
 
     /**
+     * Get the directory of the class instance
+     */
+    protected function instanceDirectory () {
+        return dirname((new ReflectionClass(static::class))->getFileName());
+    }
+
+    /**
      * Filename for the CSV file
      */
     protected function filename () : string {
-        return sprintf('%s.csv', $this->inflector()->pluralize($this->table()));
+        return sprintf('%s/%s.csv', $this->instanceDirectory(), $this->inflector()->pluralize($this->table()));
     }
 
     /**
