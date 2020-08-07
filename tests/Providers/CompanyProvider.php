@@ -3,6 +3,6 @@
 class CompanyProvider extends BaseCsvStorageProvider
 {
     protected function table () : string {
-        return 'company';
+        return empty(static::$TABLE) ? 'companies' : static::$TABLE;
     }
 }

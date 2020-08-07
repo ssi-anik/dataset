@@ -25,14 +25,13 @@ class CsvStorageTest extends BaseTestClass
         BaseCsvStorageProvider::$LIMIT = 20;
         BaseCsvStorageProvider::$USE_TRANSACTION = true;
         BaseCsvStorageProvider::$ENTRIES = [];
-        BaseCsvStorageProvider::$FILTERS = [];
         BaseCsvStorageProvider::$HEADERS = [];
-        BaseCsvStorageProvider::$MUTATION = [];
         BaseCsvStorageProvider::$CONNECTION = 'default';
         BaseCsvStorageProvider::$TABLE = '';
         BaseCsvStorageProvider::$FILENAME = '';
         BaseCsvStorageProvider::$DELIMITER = ',';
         BaseCsvStorageProvider::$EXCEPTION_RECEIVED = false;
+        BaseCsvStorageProvider::$FILE_OPEN_MODE = 'r';
     }
 
     protected function getCompanyProvider () {
@@ -188,5 +187,40 @@ class CsvStorageTest extends BaseTestClass
 
         $this->assertTrue(false === $result);
         $this->assertTrue($receivedNewType);
+    }
+
+    public function testDifferentCsvFilename () {
+        $config = [
+            'name' => __DIR__ . '/test_company.csv',
+        ];
+
+        $this->generateCompaniesData($config);
+        BaseCsvStorageProvider::$FILENAME = $config['name'];
+        $event = $this->formatEventName('preparing_reader');
+        $filenameMatches = false;
+        $this->addEventListener($event, function (...$payload) use (&$filenameMatches, $config) {
+            if (isset($payload[1]) && $payload[1] == $config['name']) {
+                $filenameMatches = true;
+            }
+        });
+
+        $provider = $this->getCompanyProvider();
+
+        $provider->addFilter(function ($record) {
+            unset($record['address']);
+
+            return $record;
+        });
+        $provider->addMutation(function ($record) {
+            return [ 'slug' => preg_replace('/[^a-z0-9]/i', '-', $record['address']) ];
+        });
+
+        $result = $provider->import();
+
+        $this->assertTrue($filenameMatches);
+        $this->assertTrue($result);
+
+        // delete file
+        unlink($config['name']);
     }
 }

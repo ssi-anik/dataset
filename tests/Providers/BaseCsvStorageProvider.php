@@ -12,17 +12,40 @@ class BaseCsvStorageProvider extends CsvStorage
     static $LIMIT = 20;
     static $USE_TRANSACTION = true;
     static $ENTRIES = [];
-    static $FILTERS = [];
     static $HEADERS = [];
-    static $MUTATION = [];
     static $CONNECTION = 'default';
     static $TABLE = '';
     static $FILENAME = '';
     static $DELIMITER = ',';
     static $EXCEPTION_RECEIVED = false;
+    static $FILE_OPEN_MODE = 'r';
+
+    private $filter = null;
+    private $mutate = null;
 
     protected function type () : string {
         return empty(static::$TYPE) ? parent::type() : static::$TYPE;
+    }
+
+    protected function fileOpenMode () : string {
+        return static::$FILE_OPEN_MODE;
+    }
+
+    // provides dynamically adding filter function
+    public function addFilter ($callback) {
+        $this->filter = $callback;
+    }
+
+    public function addMutation ($callback) {
+        $this->mutate = $callback;
+    }
+
+    protected function filterThrough ($record) {
+        return $this->filter ? call_user_func_array($this->filter, [ $record ]) : $record;
+    }
+
+    protected function mutateThrough ($record) {
+        return $this->mutate ? call_user_func_array($this->mutate, [ $record ]) : [];
     }
 
     protected function headerOffset () : ?int {
@@ -50,7 +73,7 @@ class BaseCsvStorageProvider extends CsvStorage
     }
 
     protected function filterInput (array $record) : array {
-        return static::$FILTERS;
+        return $this->filterThrough($record);
     }
 
     protected function headers () : array {
@@ -58,7 +81,7 @@ class BaseCsvStorageProvider extends CsvStorage
     }
 
     protected function mutation (array $record) : array {
-        return static::$MUTATION;
+        return $this->mutateThrough($record);
     }
 
     protected function exitOnError () : bool {
@@ -82,6 +105,7 @@ class BaseCsvStorageProvider extends CsvStorage
     }
 
     protected function raisedException (Throwable $t) : void {
+        var_dump($t->getMessage());
         static::$EXCEPTION_RECEIVED = true;
     }
 

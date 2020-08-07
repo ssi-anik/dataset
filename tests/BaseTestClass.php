@@ -125,6 +125,10 @@ abstract class BaseTestClass extends TestCase
         });
     }
 
+    protected function formatEventName ($name, $type = 'reader') {
+        return 'dataset.' . $type . '.' . $name;
+    }
+
     protected function addEventListener ($event, $listener) {
         $this->dispatcher->listen((array) $event, $listener);
     }
