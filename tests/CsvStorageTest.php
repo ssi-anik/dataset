@@ -388,6 +388,24 @@ class CsvStorageTest extends BaseTestClass
         $this->assertTrue(Manager::table('companies')->count() == $count + 1);
     }
 
+    public function testCustomHeader () {
+        $this->generateCompaniesData();
+        BaseCsvStorageProvider::$HEADERS = [ 'NAME', 'ADDRESS', 'IMAGE_URL' ];
+        $result = $this->getCompanyProvider()->addFilter(function ($record) {
+            return [
+                'name'      => $record['NAME'],
+                'slug'      => $record['slug'],
+                'image_url' => $record['IMAGE_URL'],
+            ];
+        })->addMutation(function ($record) {
+            return [
+                'slug' => str_replace(' ', '-', strtolower($this->getFaker()->sentence())),
+            ];
+        })->import();
+
+        $this->assertTrue($result);
+    }
+
     public function testLimitingCsvRows () {
         $this->generateCompaniesData([ 'lines' => 20 ]);
         BaseCsvStorageProvider::$LIMIT = 3;
