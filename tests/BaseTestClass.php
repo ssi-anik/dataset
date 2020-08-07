@@ -67,11 +67,11 @@ abstract class BaseTestClass extends TestCase
         $connections = [ 'default', 'sqlite' ];
 
         foreach ( $connections as $connection ) {
-            Manager::schema($connection)->dropIfExists('companies');
-            Manager::schema($connection)->dropIfExists('company');
-            Manager::schema($connection)->dropIfExists('members');
-            Manager::schema($connection)->dropIfExists('phones');
-            Manager::schema($connection)->dropIfExists('emails');
+            $this->rollbackMigration($connection, 'companies');
+            $this->rollbackMigration($connection, 'company');
+            $this->rollbackMigration($connection, 'members');
+            $this->rollbackMigration($connection, 'phones');
+            $this->rollbackMigration($connection, 'emails');
         }
     }
 
@@ -80,39 +80,47 @@ abstract class BaseTestClass extends TestCase
         $connections = [ 'default', 'sqlite' ];
 
         foreach ( $connections as $connection ) {
-            Manager::schema($connection)->create('companies', function (Blueprint $table) {
+            $this->addMigration($connection, 'companies', function (Blueprint $table) {
                 $table->increments('id');
                 $table->string('name');
                 $table->string('image_url');
                 $table->string('slug');
             });
 
-            Manager::schema($connection)->create('company', function (Blueprint $table) {
+            $this->addMigration($connection, 'company', function (Blueprint $table) {
                 $table->increments('id');
                 $table->string('name');
                 $table->string('image_url');
                 $table->string('slug');
             });
 
-            Manager::schema($connection)->create('members', function (Blueprint $table) {
+            $this->addMigration($connection, 'members', function (Blueprint $table) {
                 $table->increments('id');
                 $table->string('name');
                 $table->smallInteger('age');
                 $table->timestamps();
             });
 
-            Manager::schema($connection)->create('phones', function (Blueprint $table) {
+            $this->addMigration($connection, 'phones', function (Blueprint $table) {
                 $table->increments('id');
                 $table->smallInteger('member_id');
                 $table->string('number');
             });
 
-            Manager::schema($connection)->create('emails', function (Blueprint $table) {
+            $this->addMigration($connection, 'emails', function (Blueprint $table) {
                 $table->increments('id');
                 $table->smallInteger('member_id');
                 $table->string('email');
             });
         }
+    }
+
+    protected function addMigration ($connection, $table, $callback) {
+        Manager::schema($connection)->create($table, $callback);
+    }
+
+    protected function rollbackMigration ($connection, $table) {
+        Manager::schema($connection)->dropIfExists($table);
     }
 
     protected function setUpEventDispatcher () {
