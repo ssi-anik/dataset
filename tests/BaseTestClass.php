@@ -13,14 +13,14 @@ abstract class BaseTestClass extends TestCase
 
     public static function setUpBeforeClass () : void {
         parent::setUpBeforeClass();
-        touch('./tests/dataset-default.sqlite');
-        touch('./tests/dataset-sqlite.sqlite');
+        touch(__DIR__ . '/dataset-default.sqlite');
+        touch(__DIR__ . '/dataset-sqlite.sqlite');
     }
 
     public static function tearDownAfterClass () : void {
         parent::tearDownAfterClass();
-        /*unlink('./tests/dataset-default.sqlite');
-        unlink('./tests/dataset-sqlite.sqlite');*/
+        /*unlink(__DIR__ . '/dataset-default.sqlite');
+        unlink(__DIR__ . '/dataset-sqlite.sqlite');*/
     }
 
     protected function setUp () : void {
@@ -69,6 +69,8 @@ abstract class BaseTestClass extends TestCase
             Manager::schema($connection)->dropIfExists('companies');
             Manager::schema($connection)->dropIfExists('company');
             Manager::schema($connection)->dropIfExists('users');
+            Manager::schema($connection)->dropIfExists('phones');
+            Manager::schema($connection)->dropIfExists('emails');
         }
     }
 
@@ -95,6 +97,18 @@ abstract class BaseTestClass extends TestCase
                 $table->string('name');
                 $table->smallInteger('age');
                 $table->timestamps();
+            });
+
+            Manager::schema($connection)->create('phones', function (Blueprint $table) {
+                $table->increments('id');
+                $table->smallInteger('user_id');
+                $table->string('number');
+            });
+
+            Manager::schema($connection)->create('emails', function (Blueprint $table) {
+                $table->increments('id');
+                $table->smallInteger('user_id');
+                $table->string('email');
             });
         }
     }
