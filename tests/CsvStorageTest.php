@@ -253,4 +253,21 @@ class CsvStorageTest extends BaseTestClass
 
         $this->assertTrue(Manager::table('companies')->count() == $count);
     }
+
+    public function testStreamFilters () {
+        $count = 10;
+        $data = $this->generateCompaniesData([ 'lines' => $count ]);
+        BaseCsvStorageProvider::$STREAM_FILTERS = [ 'string.toupper' ];
+        $this->getCompanyProvider()->addMutation(function ($record) {
+            return [ 'slug' => preg_replace('/[^a-z0-9]/i', '-', $record['ADDRESS']) ];
+        })->addFilter(function ($record) {
+            return [
+                'name'      => $record['NAME'],
+                'image_url' => $record['IMAGE_URL'],
+                'slug'      => $record['NAME'],
+            ];
+        })->import();
+
+        $this->assertTrue(Manager::table('companies')->find(1)->name == strtoupper($data[1][0]));
+    }
 }
