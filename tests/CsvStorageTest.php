@@ -270,4 +270,11 @@ class CsvStorageTest extends BaseTestClass
 
         $this->assertTrue(Manager::table('companies')->find(1)->name == strtoupper($data[1][0]));
     }
+
+    public function testFileOpenMode () {
+        $this->generateCompaniesData();
+        BaseCsvStorageProvider::$FILE_OPEN_MODE = 'r+';
+
+        $this->assertTrue($this->getCompanyProvider()->import());
+    }
 }
