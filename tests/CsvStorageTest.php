@@ -376,4 +376,23 @@ class CsvStorageTest extends BaseTestClass
         $this->getCompanyProvider()->import();
         $this->assertTrue($processedBatch == 7);
     }
+
+    public function testDoNotUseDatabaseTransaction () {
+        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 10, 'lines' => 15 ]);
+
+        BaseCsvStorageProvider::$SKIP_EMPTY = false;
+        BaseCsvStorageProvider::$USE_TRANSACTION = false;
+
+        $result = $this->getCompanyProvider()->import();
+        $this->assertFalse($result);
+        $this->assertTrue(10 == Manager::table('companies')->count());
+    }
+
+    public function testDatabaseTransactionNoInsertionOnFailure () {
+        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 7, 'lines' => 10 ]);
+        BaseCsvStorageProvider::$SKIP_EMPTY = false;
+
+        $this->getCompanyProvider()->import();
+        $this->assertTrue(0 == Manager::table('companies')->count());
+    }
 }
