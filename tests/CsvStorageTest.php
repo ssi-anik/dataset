@@ -334,4 +334,35 @@ class CsvStorageTest extends BaseTestClass
         $this->getCompanyProvider()->import();
         $this->assertTrue(BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER == 2);
     }
+
+    public function testExcludeCsvHeaderDealingWithProvidedHeader () {
+        $count = 19;
+        $this->generateCompaniesData([ 'lines' => $count ]);
+        BaseCsvStorageProvider::$HEADER_OFFSET = null;
+        BaseCsvStorageProvider::$HEADERS = [ 'name', 'address', 'image_url' ];
+        $this->getCompanyProvider()->addMutation(function ($record) {
+            return [
+                'slug' => str_replace(' ', '-', strtolower($this->getFaker()->sentence())),
+            ];
+        })->import();
+
+        $this->assertTrue(Manager::table('companies')->count() == $count + 1);
+    }
+
+    public function testExcludeCsvHeaderDealingZeroBasedIndex () {
+        $count = 10;
+        $this->generateCompaniesData([ 'lines' => $count ]);
+        BaseCsvStorageProvider::$HEADER_OFFSET = null;
+        $this->getCompanyProvider()->addFilter(function ($record) {
+            return [
+                'name'      => $record[0],
+                'slug'      => $record[0],
+                'image_url' => $record[2],
+            ];
+        })->addMutation(function ($record) {
+            return [];
+        })->import();
+
+        $this->assertTrue(Manager::table('companies')->count() == $count + 1);
+    }
 }
