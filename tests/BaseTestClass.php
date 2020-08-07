@@ -80,34 +80,34 @@ abstract class BaseTestClass extends TestCase
         $connections = [ 'default', 'sqlite' ];
 
         foreach ( $connections as $connection ) {
-            $this->addMigration($connection, 'companies', function (Blueprint $table) {
+            $this->createTableMigration($connection, 'companies', function (Blueprint $table) {
                 $table->increments('id');
                 $table->string('name');
                 $table->string('image_url');
                 $table->string('slug');
             });
 
-            $this->addMigration($connection, 'company', function (Blueprint $table) {
+            $this->createTableMigration($connection, 'company', function (Blueprint $table) {
                 $table->increments('id');
                 $table->string('name');
                 $table->string('image_url');
                 $table->string('slug');
             });
 
-            $this->addMigration($connection, 'members', function (Blueprint $table) {
+            $this->createTableMigration($connection, 'members', function (Blueprint $table) {
                 $table->increments('id');
                 $table->string('name');
                 $table->smallInteger('age');
                 $table->timestamps();
             });
 
-            $this->addMigration($connection, 'phones', function (Blueprint $table) {
+            $this->createTableMigration($connection, 'phones', function (Blueprint $table) {
                 $table->increments('id');
                 $table->smallInteger('member_id');
                 $table->string('number');
             });
 
-            $this->addMigration($connection, 'emails', function (Blueprint $table) {
+            $this->createTableMigration($connection, 'emails', function (Blueprint $table) {
                 $table->increments('id');
                 $table->smallInteger('member_id');
                 $table->string('email');
@@ -115,8 +115,12 @@ abstract class BaseTestClass extends TestCase
         }
     }
 
-    protected function addMigration ($connection, $table, $callback) {
+    protected function createTableMigration ($connection, $table, $callback) {
         Manager::schema($connection)->create($table, $callback);
+    }
+
+    protected function alterTableMigration ($connection, $table, $callback) {
+        Manager::schema($connection)->table($table, $callback);
     }
 
     protected function rollbackMigration ($connection, $table) {
