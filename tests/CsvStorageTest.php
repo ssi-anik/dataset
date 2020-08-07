@@ -216,8 +216,8 @@ class CsvStorageTest extends BaseTestClass
     public function testProvidingEventDispatcherFromOutside () {
         $company = $this->getCompanyProvider();
         $company->setEventDispatcher($this->dispatcher);
-        // return false exists program early
-        $this->addEventListener('dataset.reader.starting', function () {
+        // return false exits program early
+        $this->addEventListener($this->formatEventName('starting'), function () {
             return false;
         });
 
@@ -228,14 +228,14 @@ class CsvStorageTest extends BaseTestClass
     }
 
     public function testCheckIfEventsAreFired () {
-        // return false exists program early
-        $this->addEventListener('dataset.reader.starting', function () {
+        // return false exits program early
+        $this->addEventListener($this->formatEventName('starting'), function () {
             return false;
         });
         $received = false;
 
         // as returned false, it'll shoot exiting
-        $this->addEventListener('dataset.reader.exiting', function () use (&$received) {
+        $this->addEventListener($this->formatEventName('exiting'), function () use (&$received) {
             $received = true;
         });
 
@@ -248,14 +248,15 @@ class CsvStorageTest extends BaseTestClass
 
     public function testRenamingEventNames () {
         // change the type of the event
-        BaseCsvStorageProvider::$TYPE = 'reading-type';
-        // return false exists program early
+        $type = BaseCsvStorageProvider::$TYPE = 'reading-type';
+
         $receivedNewType = false;
-        $this->addEventListener('dataset.reading-type.starting', function () use (&$receivedNewType) {
+        $this->addEventListener($this->formatEventName('starting', $type), function () use (&$receivedNewType) {
             $receivedNewType = true;
         });
 
-        $this->addEventListener('dataset.reading-type.preparing_reader', function () {
+        // return false exits program early
+        $this->addEventListener($this->formatEventName('preparing_reader', $type), function () {
             return false;
         });
 
@@ -454,7 +455,7 @@ class CsvStorageTest extends BaseTestClass
         $this->generateCompaniesData([ 'lines' => 20 ]);
         BaseCsvStorageProvider::$LIMIT = 3;
         $processedBatch = 0;
-        $this->addEventListener('dataset.reader.iteration.batch', function () use (&$processedBatch) {
+        $this->addEventListener($this->formatEventName('iteration.batch'), function () use (&$processedBatch) {
             ++$processedBatch;
         });
         $this->getCompanyProvider()->import();
