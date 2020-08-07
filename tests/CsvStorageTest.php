@@ -365,4 +365,15 @@ class CsvStorageTest extends BaseTestClass
 
         $this->assertTrue(Manager::table('companies')->count() == $count + 1);
     }
+
+    public function testLimitingCsvRows () {
+        $this->generateCompaniesData([ 'lines' => 20 ]);
+        BaseCsvStorageProvider::$LIMIT = 3;
+        $processedBatch = 0;
+        $this->addEventListener('dataset.reader.iteration.batch', function () use (&$processedBatch) {
+            ++$processedBatch;
+        });
+        $this->getCompanyProvider()->import();
+        $this->assertTrue($processedBatch == 7);
+    }
 }

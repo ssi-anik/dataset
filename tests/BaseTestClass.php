@@ -147,7 +147,7 @@ abstract class BaseTestClass extends TestCase
             };
     }
 
-    protected function bindEvents ($truthy = true) {
+    protected function listenToAvailableEvents ($truthy = true) {
         $events = [
             'dataset.reader.starting',
             'dataset.reader.preparing_reader',
@@ -167,7 +167,7 @@ abstract class BaseTestClass extends TestCase
             'dataset.writer.iteration.started',
             'dataset.writer.exiting',
         ];
-        $this->dispatcher->listen($events, $this->getListener($truthy));
+        $this->addEventListener($events, $this->getListener($truthy));
     }
 
     protected function getFaker ($locale = 'en_US') {
