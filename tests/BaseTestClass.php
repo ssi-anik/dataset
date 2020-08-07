@@ -1,15 +1,90 @@
 <?php
 
 use Illuminate\Container\Container;
+use Illuminate\Database\Capsule\Manager;
+use Illuminate\Database\Capsule\Manager as Capsule;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Events\Dispatcher;
 use PHPUnit\Framework\TestCase;
 
 abstract class BaseTestClass extends TestCase
 {
-    protected $container, $dispatcher;
+    protected $container, $dispatcher, $capsule;
+
+    protected function tearDown () : void {
+        parent::tearDown();
+        $this->rollbackDatabase();
+    }
+
+    protected function setUp () : void {
+        parent::setUp();
+        $this->setUpContainer();
+        $this->setUpEventDispatcher();
+        $this->bindInContainer('events', $this->dispatcher);
+        $this->setupDatabase();
+        $this->migrateDatabase();
+    }
 
     protected function setUpContainer () {
         $this->container = new Container();
+    }
+
+    protected function setupDatabase () {
+        $connections = [
+            'default' => [
+                'driver'   => 'sqlite',
+                'database' => __DIR__ . '/dataset-default.sqlite',
+            ],
+
+            'sqlite' => [
+                'driver'   => 'sqlite',
+                'database' => __DIR__ . '/dataset-sqlite.sqlite',
+            ],
+        ];
+
+        $this->capsule = new Capsule($this->container);
+        foreach ( $connections as $name => $config ) {
+            $this->capsule->addConnection($config, $name);
+        }
+        $this->capsule->setAsGlobal();
+        $this->capsule->bootEloquent();
+    }
+
+    protected function rollbackDatabase () {
+        $connections = [ 'default', 'sqlite' ];
+
+        foreach ( $connections as $connection ) {
+            Manager::schema($connection)->dropIfExists('companies');
+            Manager::schema($connection)->dropIfExists('company');
+            Manager::schema($connection)->dropIfExists('users');
+        }
+    }
+
+    protected function migrateDatabase () {
+        $connections = [ 'default', 'sqlite' ];
+
+        foreach ( $connections as $connection ) {
+            Manager::schema($connection)->create('companies', function (Blueprint $table) {
+                $table->increments('id');
+                $table->string('name');
+                $table->string('image_url');
+                $table->string('slug');
+            });
+
+            Manager::schema($connection)->create('company', function (Blueprint $table) {
+                $table->increments('id');
+                $table->string('name');
+                $table->string('image_url');
+                $table->string('slug');
+            });
+
+            Manager::schema($connection)->create('users', function (Blueprint $table) {
+                $table->increments('id');
+                $table->string('name');
+                $table->smallInteger('age');
+                $table->timestamps();
+            });
+        }
     }
 
     protected function setUpEventDispatcher () {

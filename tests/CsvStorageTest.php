@@ -2,12 +2,7 @@
 
 class CsvStorageTest extends BaseTestClass
 {
-    protected function setUp () : void {
-        $this->setUpContainer();
-    }
-
     public function testEventDispatcherIsWorking () {
-        $this->setUpEventDispatcher();
         $this->addEventListener('test-true', function ($eventName) {
             return $eventName === 'test-true';
         });
