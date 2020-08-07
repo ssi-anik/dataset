@@ -24,5 +24,5 @@ var_dump($company->import());*/
 /*$user = new User();
 var_dump($user->import());*/
 
-$user = new DbToCsv();
-var_dump($user->export());
+/*$dbCsv = new DbToCsv();
+var_dump($dbCsv->export());*/
