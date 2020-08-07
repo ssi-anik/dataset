@@ -34,6 +34,7 @@ class CsvStorageTest extends BaseTestClass
         BaseCsvStorageProvider::$DELIMITER = ',';
         BaseCsvStorageProvider::$EXCEPTION_RECEIVED = false;
         BaseCsvStorageProvider::$FILE_OPEN_MODE = 'r';
+        BaseCsvStorageProvider::$HAS_FILE_READER = false;
     }
 
     protected function getCompanyProvider () {
@@ -276,5 +277,21 @@ class CsvStorageTest extends BaseTestClass
         BaseCsvStorageProvider::$FILE_OPEN_MODE = 'r+';
 
         $this->assertTrue($this->getCompanyProvider()->import());
+    }
+
+    public function testDifferentFileReader () {
+        BaseCsvStorageProvider::$HAS_FILE_READER = true;
+
+        $this->assertTrue($this->getCompanyProvider()->addFilter(function ($record) {
+            return [
+                'name'      => $record['name'],
+                'image_url' => $record['image_url'],
+                'slug'      => $record['slug'],
+            ];
+        })->addMutation(function ($record) {
+            return [
+                'slug' => $record['name'],
+            ];
+        })->import());
     }
 }

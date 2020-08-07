@@ -1,6 +1,7 @@
 <?php
 
 use Dataset\CsvStorage;
+use League\Csv\Reader;
 
 class BaseCsvStorageProvider extends CsvStorage
 {
@@ -19,6 +20,7 @@ class BaseCsvStorageProvider extends CsvStorage
     static $DELIMITER = ',';
     static $EXCEPTION_RECEIVED = false;
     static $FILE_OPEN_MODE = 'r';
+    static $HAS_FILE_READER = false;
 
     private $filter = null;
     private $mutate = null;
@@ -51,6 +53,30 @@ class BaseCsvStorageProvider extends CsvStorage
 
     protected function mutateThrough ($record) {
         return $this->mutate ? call_user_func_array($this->mutate, [ $record ]) : [];
+    }
+
+    protected function getReaderFrom () : Reader {
+        $reader = Reader::createFromString(<<<DATA
+name,image_url,unnecessary
+Libero Morbi Accumsan Foundation,http://placehold.it/350x150,1
+Morbi Incorporated,http://placehold.it/350x150,2
+Imperdiet Limited,http://placehold.it/350x150,3
+Enim Sed Limited,http://placehold.it/350x150,extra_data
+Leo Vivamus Consulting,http://placehold.it/350x150,extra_data
+Feugiat Company,http://placehold.it/350x150,extra_data
+Lobortis Consulting,http://placehold.it/350x150,extra_data
+Nunc Pulvinar Incorporated,http://placehold.it/350x150,extra_data
+Dolor Tempus Non PC,http://placehold.it/350x150,extra_data
+Feugiat Tellus Lorem Company,http://placehold.it/350x150,extra_data
+DATA
+        );
+        $reader->setHeaderOffset(0);
+
+        return $reader;
+    }
+
+    protected function getReader () : Reader {
+        return static::$HAS_FILE_READER ? $this->getReaderFrom() : parent::getReader();
     }
 
     protected function headerOffset () : ?int {
