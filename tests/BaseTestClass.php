@@ -1,5 +1,6 @@
 <?php
 
+use Faker\Factory;
 use Illuminate\Container\Container;
 use Illuminate\Database\Capsule\Manager;
 use Illuminate\Database\Capsule\Manager as Capsule;
@@ -34,7 +35,7 @@ abstract class BaseTestClass extends TestCase
 
     protected function tearDown () : void {
         parent::tearDown();
-        $this->rollbackDatabase();
+        //        $this->rollbackDatabase();
     }
 
     protected function setUpContainer () {
@@ -159,5 +160,9 @@ abstract class BaseTestClass extends TestCase
             'dataset.writer.exiting',
         ];
         $this->dispatcher->listen($events, $this->getListener($truthy));
+    }
+
+    protected function getFaker ($locale = 'en_US') {
+        return Factory::create($locale);
     }
 }

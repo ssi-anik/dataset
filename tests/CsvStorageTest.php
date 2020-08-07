@@ -43,49 +43,83 @@ class CsvStorageTest extends BaseTestClass
         return new Member($this->container);
     }
 
-    protected function generateCompaniesData ($emptyLine = false, $filename = __DIR__ . '/companies.csv') {
-        $data = <<<DATA
-name,image_url,extra_data
-Libero Morbi Accumsan Foundation,http://placehold.it/350x150,extra_data
-Morbi Incorporated,http://placehold.it/350x150,extra_data
-Imperdiet Limited,http://placehold.it/350x150,extra_data
-Enim Sed Limited,http://placehold.it/350x150,extra_data
+    protected function generateCompaniesData (array $config = []) {
+        $filename = $config['name'] ?? __DIR__ . '/companies.csv';
+        $delimiter = $config['delimiter'] ?? ',';
+        $emptyLine = $config['empty_line'] ?? false;
+        $modulo = $config['modulo'] ?? 8;
+        $lines = $config['lines'] ?? 10;
+        $skipHeader = $config['skip_header'] ?? false;
+        $locale = $config['locale'] ?? 'en_US';
+        $faker = $this->getFaker($locale);
 
-DATA;
-        if ($emptyLine) {
-            $data .= PHP_EOL;
+        $headers = [ 'name', 'address', 'image_url' ];
+        if ($skipHeader) {
+            $data = [];
+            $rows = [];
+        } else {
+            $data = [ $headers ];
+            $rows = [ implode($delimiter, $headers) ];
         }
-        $data .= <<<DATA
-Leo Vivamus Consulting,http://placehold.it/350x150,extra_data
-Feugiat Company,http://placehold.it/350x150,extra_data
-Lobortis Consulting,http://placehold.it/350x150,extra_data
-Nunc Pulvinar Incorporated,http://placehold.it/350x150,extra_data
-Dolor Tempus Non PC,http://placehold.it/350x150,extra_data
-Feugiat Tellus Lorem Company,http://placehold.it/350x150,extra_data
-DATA;
-        file_put_contents($filename, $data);
+        foreach ( range(1, $lines) as $i ) {
+            $row = [
+                $faker->name,
+                $faker->streetAddress,
+                $faker->imageUrl(),
+            ];
+
+            $data[] = $row;
+            $rows[] = implode($delimiter, $row);
+            if ($emptyLine && ($i % $modulo === 0)) {
+                $data[] = [];
+                $rows[] = '';
+            }
+        }
+
+        file_put_contents($filename, implode(PHP_EOL, $rows));
+
+        return $data;
     }
 
-    protected function generateMembersData ($emptyLine = false, $filename = __DIR__ . '/members.csv') {
-        $data = <<<DATA
-Audrey,35,Pede Nunc Sed Corporation,1-306-213-7650,lorem@duiCumsociis.co.uk
-Dustin,21,Tristique Pharetra Institute,1-503-655-1646,Nulla.interdum.Curabitur@risus.com
-Ann,40,Accumsan Interdum PC,1-376-771-7499,Morbi.sit@nonegestasa.com
-Tanisha,20,Parturient Montes Nascetur Consulting,1-476-964-1349,ut@auctorMauris.org
-Omar,43,Quisque Purus Foundation,1-676-331-5079,velit.Pellentesque.ultricies@purusmauris.edu
+    protected function generateMembersData (array $config = []) {
+        $filename = $config['name'] ?? __DIR__ . '/members.csv';
+        $delimiter = $config['delimiter'] ?? ',';
+        $emptyLine = $config['empty_line'] ?? false;
+        $modulo = $config['modulo'] ?? 8;
+        $lines = $config['lines'] ?? 10;
+        $skipHeader = $config['skip_header'] ?? true;
+        $locale = $config['locale'] ?? 'en_US';
+        $faker = $this->getFaker($locale);
 
-DATA;
-        if ($emptyLine) {
-            $data .= PHP_EOL;
+        $headers = [ 'name', 'age', 'company', 'address', 'phone', 'email', ];
+        if ($skipHeader) {
+            $data = [];
+            $rows = [];
+        } else {
+            $data = [ $headers ];
+            $rows = [ implode($delimiter, $headers) ];
         }
-        $data .= <<<DATA
-Madeline,25,Quis Arcu Inc.,1-543-583-8881,Aliquam.erat.volutpat@amet.com
-Cole,36,Nunc Risus LLP,1-151-971-3050,Aliquam.tincidunt.nunc@acmattis.net
-Julian,35,Est Nunc Associates,1-389-399-1089,nec.eleifend.non@orcitincidunt.com
-Robin,39,Turpis Nulla LLP,1-882-935-4669,sit.amet@utpharetra.edu
-Brandon,35,Augue Limited,1-189-777-6438,quam.Curabitur.vel@Integereu.com
-DATA;
-        file_put_contents($filename, $data);
+        foreach ( range(1, $lines) as $i ) {
+            $row = [
+                $faker->name,
+                $faker->randomNumber(2),
+                $faker->company,
+                $faker->streetAddress,
+                $faker->e164PhoneNumber,
+                $faker->companyEmail,
+            ];
+
+            $data[] = $row;
+            $rows[] = implode($delimiter, $row);
+            if ($emptyLine && ($i % $modulo === 0)) {
+                $data[] = [];
+                $rows[] = '';
+            }
+        }
+
+        file_put_contents($filename, implode(PHP_EOL, $rows));
+
+        return $data;
     }
 
     public function testEventDispatcherIsWorking () {
