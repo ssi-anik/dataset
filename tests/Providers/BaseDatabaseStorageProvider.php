@@ -146,7 +146,12 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
     }
 
     protected function getWriterFrom () : Writer {
-        throw new \Exception('Unimplemented');
+        $writer = Writer::createFromString();
+        $writer->setDelimiter($this->delimiterCharacter());
+        $writer->setEnclosure($this->enclosureCharacter());
+        $writer->setEscape($this->escapeCharacter());
+
+        return $writer;
     }
 
     protected function getWriter () : Writer {

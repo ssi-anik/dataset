@@ -356,24 +356,18 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue($this->getUserProvider()->export());
     }
 
-    /*
+    public function testDifferentFileWriter () {
+        $this->seedUserTable();
+        BaseDatabaseStorageProvider::$HAS_FILE_WRITER = true;
 
-    public function testDifferentFileReader () {
-        BaseDatabaseStorageProvider::$HAS_FILE_READER = true;
-
-        $this->assertTrue($this->getCompanyProvider()->addFilter(function ($record) {
-            return [
-                'name'      => $record['name'],
-                'image_url' => $record['image_url'],
-                'slug'      => $record['slug'],
-            ];
-        })->addMutation(function ($record) {
-            return [
-                'slug' => $record['name'],
-            ];
-        })->export());
+        $provider = $this->getUserProvider();
+        $this->assertTrue($provider->export());
+        file_put_contents($provider->filename(), $provider->getWriterContent());
+        $firstRow = $this->getNthLineFrom($provider->filename());
+        $this->assertTrue(6 === count($firstRow), 'Matching count for first row');
     }
 
+    /*
     public function testDoNotSkipEmptyLines () {
         $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 5 ]);
         BaseDatabaseStorageProvider::$SKIP_EMPTY = false;
