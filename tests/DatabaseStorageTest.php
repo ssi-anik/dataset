@@ -124,6 +124,37 @@ class DatabaseStorageTest extends BaseTestClass
         return $data;
     }
 
+    protected function seedUserWithEscapeAndEnclosure (array $config = []) {
+        $rows = $config['rows'] ?? 5;
+        $locale = $config['locale'] ?? 'en_US';
+        $connection = $config['connection'] ?? 'default';
+        $table = $config['table'] ?? 'users';
+        $faker = $this->getFaker($locale);
+        $now = Carbon::now();
+        $dateVariations = [ 0, 5, 7, 15, 30, 100, 150, 180 ];
+        $dates = [];
+        foreach ( $dateVariations as $variation ) {
+            $dates[] = (clone $now)->subDays($variation)->startOfHour()->toDateTimeString();
+        }
+
+        $data = [];
+        foreach ( range(1, $rows) as $i ) {
+            $onDate = $dates[rand(0, count($dates) - 1)];
+            // $onDate = $dates[array_rand($dates, 1)];
+            $data[] = [
+                'name'       => sprintf('"%s"', $faker->name),
+                'email'      => $faker->companyEmail,
+                'number'     => $faker->e164PhoneNumber,
+                'created_at' => $onDate,
+                'updated_at' => $onDate,
+            ];
+        }
+
+        Manager::connection($connection)->table($table)->insert($data);
+
+        return $data;
+    }
+
     protected function getUserProvider () {
         return (new UserProvider($this->container));
     }
@@ -334,6 +365,17 @@ class DatabaseStorageTest extends BaseTestClass
         $firstLine = $this->getNthStringLineFrom($filename = $provider->filename());
         // no of columns are 6 in users table
         $this->assertTrue(6 <= count(explode($delimiter, $firstLine)));
+    }
+
+    public function testUseChangedEncloseCharacter () {
+        $this->seedUserWithEscapeAndEnclosure([ 'rows' => 30 ]);
+        BaseDatabaseStorageProvider::$ENCLOSE_CHARACTER = $enclosed = '!';
+        $provider = $this->getUserProvider();
+        $this->assertTrue($provider->export());
+
+        $firstLine = $this->getNthStringLineFrom($filename = $provider->filename());
+        // name, created_at, updated_at uses double quotes around - 3 * 2 = 6
+        $this->assertTrue(6 === substr_count($firstLine, $enclosed));
     }
 
     /*public function testStreamFilters () {
