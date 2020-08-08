@@ -23,7 +23,6 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
     static $TABLE = '';
     static $FILENAME = '';
     static $DELIMITER = ',';
-    static $ESCAPE_CHARACTER = '\\';
     static $ENCLOSE_CHARACTER = '"';
     static $EXCEPTION_RECEIVED = false;
     static $HANDLED_EXCEPTION_COUNTER = 0;
@@ -180,10 +179,6 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
 
     protected function enclosureCharacter () : string {
         return static::$ENCLOSE_CHARACTER;
-    }
-
-    protected function escapeCharacter () : string {
-        return static::$ESCAPE_CHARACTER;
     }
 
     protected function raisedException (Throwable $t) : void {

@@ -33,7 +33,6 @@ class DatabaseStorageTest extends BaseTestClass
         BaseDatabaseStorageProvider::$TABLE = '';
         BaseDatabaseStorageProvider::$FILENAME = '';
         BaseDatabaseStorageProvider::$DELIMITER = ',';
-        BaseDatabaseStorageProvider::$ESCAPE_CHARACTER = '\\';
         BaseDatabaseStorageProvider::$ENCLOSE_CHARACTER = '"';
         BaseDatabaseStorageProvider::$EXCEPTION_RECEIVED = false;
         BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER = 0;
@@ -98,6 +97,8 @@ class DatabaseStorageTest extends BaseTestClass
         $locale = $config['locale'] ?? 'en_US';
         $connection = $config['connection'] ?? 'default';
         $table = $config['table'] ?? 'users';
+        $enclosure = $config['enclosure'] ?? false;
+
         $faker = $this->getFaker($locale);
         $now = Carbon::now();
         $dateVariations = [ 0, 5, 7, 15, 30, 100, 150, 180 ];
@@ -111,38 +112,7 @@ class DatabaseStorageTest extends BaseTestClass
             $onDate = $dates[rand(0, count($dates) - 1)];
             // $onDate = $dates[array_rand($dates, 1)];
             $data[] = [
-                'name'       => $faker->name,
-                'email'      => $faker->companyEmail,
-                'number'     => $faker->e164PhoneNumber,
-                'created_at' => $onDate,
-                'updated_at' => $onDate,
-            ];
-        }
-
-        Manager::connection($connection)->table($table)->insert($data);
-
-        return $data;
-    }
-
-    protected function seedUserWithEscapeAndEnclosure (array $config = []) {
-        $rows = $config['rows'] ?? 5;
-        $locale = $config['locale'] ?? 'en_US';
-        $connection = $config['connection'] ?? 'default';
-        $table = $config['table'] ?? 'users';
-        $faker = $this->getFaker($locale);
-        $now = Carbon::now();
-        $dateVariations = [ 0, 5, 7, 15, 30, 100, 150, 180 ];
-        $dates = [];
-        foreach ( $dateVariations as $variation ) {
-            $dates[] = (clone $now)->subDays($variation)->startOfHour()->toDateTimeString();
-        }
-
-        $data = [];
-        foreach ( range(1, $rows) as $i ) {
-            $onDate = $dates[rand(0, count($dates) - 1)];
-            // $onDate = $dates[array_rand($dates, 1)];
-            $data[] = [
-                'name'       => sprintf('"%s"', $faker->name),
+                'name'       => $enclosure ? sprintf('"%s"', $faker->name) : $faker->name,
                 'email'      => $faker->companyEmail,
                 'number'     => $faker->e164PhoneNumber,
                 'created_at' => $onDate,
@@ -368,7 +338,7 @@ class DatabaseStorageTest extends BaseTestClass
     }
 
     public function testUseChangedEncloseCharacter () {
-        $this->seedUserWithEscapeAndEnclosure([ 'rows' => 30 ]);
+        $this->seedUserTable([ 'rows' => 30, 'enclosure' => true, ]);
         BaseDatabaseStorageProvider::$ENCLOSE_CHARACTER = $enclosed = '!';
         $provider = $this->getUserProvider();
         $this->assertTrue($provider->export());
