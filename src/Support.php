@@ -56,18 +56,18 @@ trait Support
      * Fire an event if registered the event dispatcher
      *
      * @param       $event
-     * @param array $parameters
+     * @param array $payloads
      *
      * @return bool
      * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
-    protected function fireEvent ($event, array $parameters = []) : bool {
+    protected function fireEvent ($event, array $payloads = []) : bool {
         if (!$this->container || !$this->container->bound('events')) {
             return true;
         }
         $name = $this->makeDatasetEvent($event);
-        $parameters = array_merge([ 'class' => get_class($this) ], $parameters);
-        $result = $this->container->make('events')->until($name, $parameters);
+        $payloads = array_merge([ 'class' => get_class($this) ], $payloads);
+        $result = $this->container->make('events')->until($name, $payloads);
 
         return $result === false ? false : true;
     }
