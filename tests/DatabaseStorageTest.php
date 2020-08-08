@@ -538,11 +538,15 @@ class DatabaseStorageTest extends BaseTestClass
 
     public function testColumnMethodPullsOnlySpecificFields () {
         $this->seedUserTable([ 'rows' => 20 ]);
-        BaseDatabaseStorageProvider::$COLUMNS = [ 'name', 'created_at' ];
+        BaseDatabaseStorageProvider::$COLUMNS = [
+            'name',
+            'created_at',
+            Manager::connection()->raw("'extra value' as extra_value"),
+        ];
         $provider = $this->getUserProvider();
 
         $this->assertTrue($provider->export());
-        $this->assertTrue(2 == count($this->getNthRowFrom($provider->filename())));
+        $this->assertTrue(3 == count($this->getNthRowFrom($provider->filename())));
     }
 
     /**
