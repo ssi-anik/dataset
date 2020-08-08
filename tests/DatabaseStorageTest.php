@@ -480,6 +480,26 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue($isChunk);
     }
 
+    public function testFilterDataWithCondition () {
+        $dbRows = $this->seedUserTable([ 'rows' => 100 ]);
+        $diff = 30;
+        $rowsPicked = 0;
+        $this->addEventListener($this->formatEventName('iteration.batch'), function (...$payload) use (&$rowsPicked) {
+            $rowsPicked += $payload[2];
+        });
+
+        BaseDatabaseStorageProvider::$CONDITION = true;
+        $provider = $this->getUserProvider()->addCondition(function ($q) use ($diff) {
+            $q->where('created_at', '<=', Carbon::now()->subDays($diff)->toDateTimeString());
+        });
+        $provider->export();
+        $acceptableRows = array_filter($dbRows, function ($item) use ($diff) {
+            return Carbon::createFromFormat('Y-m-d H:i:s', $item['created_at'])->diffInDays(Carbon::now()) >= $diff;
+        });
+
+        $this->assertTrue(count($acceptableRows) == $rowsPicked);
+    }
+
     /*public function testMultipleTableEntries () {
         $this->generateMembersData([ 'lines' => 20, ]);
         BaseDatabaseStorageProvider::$ENTRIES = true;

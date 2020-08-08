@@ -47,9 +47,7 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
     }
 
     protected function conditionThrough () {
-        return $this->condition
-            ? call_user_func_array($this->condition, [])
-            : function ($q) {
+        return $this->condition ?? function ($q) {
             };
     }
 
