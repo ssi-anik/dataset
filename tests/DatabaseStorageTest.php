@@ -150,7 +150,7 @@ class DatabaseStorageTest extends BaseTestClass
         return $data;
     }
 
-    private function getLinesFrom ($file, $lines = 1, array $config = []) : array {
+    private function getRowsFrom ($file, $lines = 1, array $config = []) : array {
         $delimiter = $config['delimiter'] ?? ',';
         $enclosure = $config['enclosure'] ?? '"';
         $escape = $config['escape'] ?? '\\';
@@ -178,8 +178,8 @@ class DatabaseStorageTest extends BaseTestClass
         return $this->getStringLinesFrom($file, $row, $config)[$row - 1];
     }
 
-    private function getNthLineFrom ($file, $line = 1, array $config = []) : array {
-        return $this->getLinesFrom($file, $line, $config)[$line - 1];
+    private function getNthRowFrom ($file, $line = 1, array $config = []) : array {
+        return $this->getRowsFrom($file, $line, $config)[$line - 1];
     }
 
     public function testEventDispatcherIsWorking () {
@@ -274,7 +274,7 @@ class DatabaseStorageTest extends BaseTestClass
         $result = $provider->export();
         $this->assertTrue($result);
 
-        $firstLine = $this->getNthLineFrom($filename);
+        $firstLine = $this->getNthRowFrom($filename);
         // no of columns are 6 in users table
         $this->assertTrue(6 === count($firstLine));
 
@@ -304,7 +304,7 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue($filenameMatches);
         $this->assertTrue($result);
 
-        $firstLine = $this->getNthLineFrom($filename);
+        $firstLine = $this->getNthRowFrom($filename);
         // no of columns are 6 in users table
         $this->assertTrue(file_exists($filename));
         $this->assertTrue(6 === count($firstLine));
@@ -320,7 +320,7 @@ class DatabaseStorageTest extends BaseTestClass
         $provider = $this->getUserProvider();
         $this->assertTrue($provider->export());
 
-        $firstLine = $this->getNthLineFrom($filename = $provider->filename());
+        $firstLine = $this->getNthRowFrom($filename = $provider->filename());
         // no of columns are 6 in users table
         $this->assertTrue(file_exists($filename));
         $this->assertTrue(6 === count($firstLine));
@@ -363,7 +363,7 @@ class DatabaseStorageTest extends BaseTestClass
         $provider = $this->getUserProvider();
         $this->assertTrue($provider->export());
         file_put_contents($provider->filename(), $provider->getWriterContent());
-        $firstRow = $this->getNthLineFrom($provider->filename());
+        $firstRow = $this->getNthRowFrom($provider->filename());
         $this->assertTrue(6 === count($firstRow), 'Matching count for first row');
     }
 
@@ -387,21 +387,20 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER == 4);
     }
 
-    /*
+    public function testAddHeaderToCsv () {
+        $this->seedUserTable();
+        BaseDatabaseStorageProvider::$HEADERS = $headers = [ 'name', 'email', 'number' ];
+        $provider = $this->getUserProvider();
 
-    public function testExcludeCsvHeaderDealingWithProvidedHeader () {
-        $count = 19;
-        $this->generateCompaniesData([ 'lines' => $count ]);
-        BaseDatabaseStorageProvider::$HEADER_OFFSET = null;
-        BaseDatabaseStorageProvider::$HEADERS = [ 'name', 'address', 'image_url' ];
-        $this->getCompanyProvider()->addMutation(function ($record) {
-            return [
-                'slug' => str_replace(' ', '-', strtolower($this->getFaker()->sentence())),
-            ];
-        })->export();
+        $this->assertTrue($provider->export());
 
-        $this->assertTrue(Manager::table('companies')->count() == $count + 1);
+        $firstRow = $this->getNthRowFrom($provider->filename());
+        $secondRow = $this->getNthRowFrom($provider->filename(), 2);
+        $this->assertTrue($firstRow == $headers);
+        $this->assertTrue(3 === count($secondRow));
     }
+
+    /*
 
     public function testExcludeCsvHeaderDealingZeroBasedIndex () {
         $count = 10;
