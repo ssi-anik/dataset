@@ -98,6 +98,17 @@ abstract class DatabaseStorage
     }
 
     /**
+     * Filter out the record that is to be pushed to the csv
+     *
+     * @param array $record
+     *
+     * @return array
+     */
+    protected function filterOutput (array $record) : array {
+        return $record;
+    }
+
+    /**
      * Exit insertion if any error occurs
      */
     protected function exitOnError () : bool {
@@ -164,14 +175,16 @@ abstract class DatabaseStorage
 
         $headers = $this->headers();
 
-        $csvColumns = [];
         // if user has provided the headers
         if ($headers) {
             // if the first element of the headers is integer, it's assumed to be integer based array
             $csvColumns = is_integer(array_keys($headers)[0]) ? $headers : array_keys($headers);
+
+            return $this->extractColumnsForCsv($csvColumns, $record);
         }
 
-        return $this->extractColumnsForCsv($csvColumns, $record);
+        return $this->filterOutput($record);
+
     }
 
     /**

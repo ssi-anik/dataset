@@ -33,6 +33,7 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
     private $condition = null;
     private $join = null;
     private $orderBy = null;
+    private $filter = null;
     private $mutate = null;
     private $builder = null;
     private $db = null;
@@ -73,6 +74,17 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
 
     protected function orderByThrough () {
         return $this->orderBy ? call_user_func_array($this->orderBy, []) : $this->db()->raw('id');
+    }
+
+    // provides dynamically adding mutation function
+    public function addFilter ($callback) {
+        $this->filter = $callback;
+
+        return $this;
+    }
+
+    protected function filterThrough ($record) {
+        return $this->filter ? call_user_func_array($this->filter, [ $record ]) : $record;
     }
 
     // provides dynamically adding mutation function
@@ -150,6 +162,10 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
 
     protected function mutation (array $record) : array {
         return $this->mutateThrough($record);
+    }
+
+    protected function filterOutput (array $record) : array {
+        return $this->filterThrough($record);
     }
 
     protected function exitOnError () : bool {

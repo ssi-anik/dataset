@@ -565,6 +565,20 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(5 === count($secondRow));
     }
 
+    public function testFilterWhenHeaderIsNotPresent () {
+        $this->seedUserTable([ 'rows' => 20 ]);
+        $provider = $this->getUserProvider()->addFilter(function ($record) {
+            return [
+                'name'  => $record['name'],
+                'email' => $record['email'],
+            ];
+        });
+
+        $this->assertTrue($provider->export());
+
+        $this->assertTrue(2 === count($this->getNthRowFrom($provider->filename())));
+    }
+
     public function testLimitingDatabaseQueryPerBatch () {
         $this->seedUserTable([ 'rows' => 20 ]);
         BaseDatabaseStorageProvider::$LIMIT = 3;
