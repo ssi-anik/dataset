@@ -19,7 +19,14 @@ trait Support
         $this->container = $container ?? new Container();
     }
 
-    protected function makeDatasetEvent ($event) {
+    /**
+     * Builds the event name string
+     *
+     * @param string $event
+     *
+     * @return string
+     */
+    protected function makeDatasetEvent (string $event) : string {
         return 'dataset.' . $this->type() . '.' . $event;
     }
 
@@ -89,7 +96,7 @@ trait Support
     /**
      * Get the connection name to use for the class
      */
-    protected function connection () {
+    protected function connection () : string {
         return 'default';
     }
 
@@ -110,7 +117,7 @@ trait Support
     /**
      * Get the directory of the class instance
      */
-    protected function instanceDirectory () {
+    protected function instanceDirectory () : string {
         return dirname((new ReflectionClass(static::class))->getFileName());
     }
 

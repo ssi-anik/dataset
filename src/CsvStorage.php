@@ -39,7 +39,7 @@ abstract class CsvStorage
     /**
      * Opens in read mode to stop accidentally write something
      */
-    protected function fileOpenMode () {
+    protected function fileOpenMode () : string {
         return 'r';
     }
 
@@ -82,6 +82,13 @@ abstract class CsvStorage
         ];
     }
 
+    /**
+     * Filter out the record that is to be pushed to the database
+     *
+     * @param array $record
+     *
+     * @return array
+     */
     protected function filterInput (array $record) : array {
         return $record;
     }
