@@ -61,7 +61,7 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
     }
 
     protected function joinThrough () {
-        return $this->join ? call_user_func_array($this->condition, []) : [];
+        return $this->join ? call_user_func_array($this->join, []) : [];
     }
 
     // provides dynamically adding orderby

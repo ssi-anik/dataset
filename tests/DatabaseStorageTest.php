@@ -53,6 +53,7 @@ class DatabaseStorageTest extends BaseTestClass
             $this->rollbackMigration($connection, 'categories');
             $this->rollbackMigration($connection, 'products');
             $this->rollbackMigration($connection, 'orders');
+            $this->rollbackMigration($connection, 'order_details');
         }
     }
 
@@ -87,8 +88,15 @@ class DatabaseStorageTest extends BaseTestClass
             $this->createTableMigration($connection, 'orders', function (Blueprint $table) {
                 $table->increments('id');
                 $table->smallInteger('user_id');
-                $table->string('uuid');
+                $table->string('order_uuid');
                 $table->smallInteger('total_price');
+            });
+
+            $this->createTableMigration($connection, 'order_details', function (Blueprint $table) {
+                $table->increments('id');
+                $table->smallInteger('order_id');
+                $table->smallInteger('product_id');
+                $table->smallInteger('price');
             });
         }
     }
@@ -130,8 +138,98 @@ class DatabaseStorageTest extends BaseTestClass
         return $data;
     }
 
+    protected function seedCategoryTable (array $config = []) {
+        $rows = $config['rows'] ?? 20;
+        $locale = $config['locale'] ?? 'en_US';
+        $connection = $config['connection'] ?? 'default';
+        $table = $config['table'] ?? 'categories';
+
+        $faker = $this->getFaker($locale);
+        $data = [];
+        foreach ( range(1, $rows) as $i ) {
+            $data[] = [
+                'name'      => $faker->lexify('Category - ??????'),
+                'image_url' => $faker->imageUrl(),
+                'slug'      => $faker->unique()->slug,
+            ];
+        }
+        Manager::connection($connection)->table($table)->insert($data);
+
+        return $data;
+    }
+
+    protected function seedProductTable (array $config = []) {
+        $rows = $config['rows'] ?? 50;
+        $categoryMin = $config['category_min'] ?? 1;
+        $categoryMax = $config['category_max'] ?? 20;
+        $locale = $config['locale'] ?? 'en_US';
+        $connection = $config['connection'] ?? 'default';
+        $table = $config['table'] ?? 'products';
+
+        $faker = $this->getFaker($locale);
+        $data = [];
+        foreach ( range(1, $rows) as $i ) {
+            $data[] = [
+                'category_id' => $faker->randomElement(range($categoryMin, $categoryMax)),
+                'name'        => $faker->lexify('Product - ??????'),
+                'image_url'   => $faker->imageUrl(),
+                'price'       => $faker->randomElement(range(50, 4000)),
+            ];
+        }
+        Manager::connection($connection)->table($table)->insert($data);
+
+        return $data;
+    }
+
+    protected function seedOrderTable (array $config = []) {
+        $rows = $config['rows'] ?? 30;
+        $userMin = $config['user_min'] ?? 1;
+        $userMax = $config['user_max'] ?? 30;
+        $productMin = $config['product_min'] ?? 1;
+        $productMax = $config['product_max'] ?? 50;
+        $locale = $config['locale'] ?? 'en_US';
+        $connection = $config['connection'] ?? 'default';
+        $table = $config['table'] ?? 'orders';
+        $detailsTable = $config['details_table'] ?? 'order_details';
+
+        $faker = $this->getFaker($locale);
+
+        $orders = [];
+        $details = [];
+        foreach ( range(1, $rows) as $i ) {
+            $orders[] = [
+                'user_id'     => $faker->randomElement(range($userMin, $userMax)),
+                'order_uuid'  => $faker->unique()->uuid,
+                'total_price' => $faker->randomFloat(2, 500, 5000),
+            ];
+
+            foreach ( range(1, $faker->randomElement(range(3, 9))) as $j ) {
+                $details[] = [
+                    'order_id'   => $i,
+                    'product_id' => $faker->randomElement(range($productMin, $productMax)),
+                    'price'      => $faker->randomElement(range(50, 4000)),
+                ];
+            }
+        }
+        Manager::connection($connection)->table($table)->insert($orders);
+        Manager::connection($connection)->table($detailsTable)->insert($details);
+
+        return [
+            'order_count'   => count($orders),
+            'details_count' => count($details),
+            'order_table'   => $table,
+            'details_table' => $detailsTable,
+            'orders'        => $orders,
+            'order_details' => $details,
+        ];
+    }
+
     protected function getUserProvider () {
         return (new UserProvider($this->container));
+    }
+
+    protected function getOrderProvider () {
+        return (new Order($this->container));
     }
 
     private function getStringLinesFrom ($file, $rows = 1, array $config = []) : array {
@@ -547,6 +645,76 @@ class DatabaseStorageTest extends BaseTestClass
 
         $this->assertTrue($provider->export());
         $this->assertTrue(3 == count($this->getNthRowFrom($provider->filename())));
+    }
+
+    public function testJoinFunction () {
+        $connection = 'default';
+        $this->seedUserTable();
+        $this->seedCategoryTable();
+        $this->seedProductTable();
+        $data = $this->seedOrderTable();
+
+        BaseDatabaseStorageProvider::$JOINS = true;
+        BaseDatabaseStorageProvider::$ORDER_BY = true;
+        BaseDatabaseStorageProvider::$HEADERS = [
+            'order_uuid'     => 'Order UUID',
+            'username'       => 'User\'s name',
+            'product_name'   => 'Ordered product',
+            'product_image'  => 'Product image',
+            'product_price'  => 'Price of product on order',
+            'category_name'  => 'Category',
+            'category_image' => 'Category Image',
+        ];
+        BaseDatabaseStorageProvider::$COLUMNS = [
+            Manager::connection($connection)->raw('orders.order_uuid'),
+            Manager::connection($connection)->raw('users.name as username'),
+            Manager::connection($connection)->raw("'----' as separator_one"),
+            Manager::connection($connection)->raw('products.name as product_name'),
+            Manager::connection($connection)->raw('products.image_url as product_image'),
+            Manager::connection($connection)->raw('order_details.price as product_price'),
+            Manager::connection($connection)->raw("'----' as separator_two"),
+            Manager::connection($connection)->raw('categories.image_url as category_image'),
+            Manager::connection($connection)->raw('categories.name as category_name'),
+        ];
+
+        $rowsPicked = 0;
+        $this->addEventListener($this->formatEventName('iteration.batch'), function (...$payload) use (&$rowsPicked) {
+            $rowsPicked += $payload[2];
+        });
+
+        $provider = $this->getOrderProvider()->addOrderBy(function () use ($connection) {
+            return Manager::connection($connection)->raw('orders.id');
+        })->addJoin(function () {
+            return [
+                [
+                    'order_details',
+                    'order_details.order_id',
+                    '=',
+                    'orders.id',
+                ],
+                [
+                    'products',
+                    'order_details.product_id',
+                    '=',
+                    'products.id',
+                ],
+                [
+                    'users',
+                    'orders.user_id',
+                    '=',
+                    'users.id',
+                ],
+                [
+                    'categories',
+                    'products.category_id',
+                    '=',
+                    'categories.id',
+                ],
+            ];
+        });
+        $this->assertTrue($provider->export());
+
+        $this->assertTrue($rowsPicked == $data['details_count']);
     }
 
     /**
