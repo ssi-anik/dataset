@@ -256,6 +256,37 @@ class DatabaseStorageTest extends BaseTestClass
         unlink($filename);
     }
 
+    public function testDifferentCsvFilename () {
+        $count = 15;
+        $this->seedUserTable([ 'rows' => $count ]);
+        // places file one directory up of the class file
+        $filename = __DIR__ . '/new-file-for-users.csv';
+
+        $filenameMatches = false;
+        $this->addEventListener($this->formatEventName('preparing_writer'),
+            function (...$payload) use ($filename, &$filenameMatches) {
+                if (isset($payload[1]) && $payload[1] == $filename) {
+                    $filenameMatches = true;
+                }
+            });
+
+        BaseDatabaseStorageProvider::$FILENAME = $filename;
+
+        $provider = $this->getUserProvider();
+
+        $result = $provider->export();
+        $this->assertTrue($filenameMatches);
+        $this->assertTrue($result);
+
+        $firstLine = $this->getNthLineFrom($filename);
+        // no of columns are 6 in users table
+        $this->assertTrue(file_exists($filename));
+        $this->assertTrue(6 === count($firstLine));
+
+        // delete file
+        unlink($filename);
+    }
+
     /*
 
     public function testDifferentDatabaseConnection () {
