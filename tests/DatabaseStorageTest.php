@@ -454,7 +454,7 @@ class DatabaseStorageTest extends BaseTestClass
     public function testFileOpenMode () {
         $this->seedUserTable();
         // r+ also gives permission to write
-        BaseDatabaseStorageProvider::$FILE_OPEN_MODE = 'r+';
+        BaseDatabaseStorageProvider::$FILE_OPEN_MODE = 'a';
 
         $this->assertTrue($this->getUserProvider()->export());
     }
