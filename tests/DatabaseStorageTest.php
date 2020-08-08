@@ -367,28 +367,15 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(6 === count($firstRow), 'Matching count for first row');
     }
 
-    /*
-    public function testDoNotSkipEmptyLines () {
-        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 5 ]);
-        BaseDatabaseStorageProvider::$SKIP_EMPTY = false;
-
-        $this->assertFalse($this->getCompanyProvider()->export());
-    }
-
-    public function testSkipEmptyLine () {
-        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 9 ]);
-
-        $this->getCompanyProvider()->export();
-        $this->assertTrue(BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER == 0);
-    }
-
     public function testExceptionIsReceivedByMethod () {
-        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 9 ]);
-        BaseDatabaseStorageProvider::$SKIP_EMPTY = false;
+        $this->seedUserTable();
+        BaseDatabaseStorageProvider::$FILE_OPEN_MODE = 'r';
 
-        $this->getCompanyProvider()->export();
+        $this->assertFalse($this->getUserProvider()->export());
         $this->assertTrue(BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER > 0);
     }
+
+    /*
 
     public function testExitOnFailureIfFalse () {
         $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 2, 'lines' => 5 ]);
