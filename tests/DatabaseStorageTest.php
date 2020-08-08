@@ -504,6 +504,40 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(count($acceptableRows) == $rowsPicked);
     }
 
+    public function testOrderByWithDirection () {
+        $this->seedUserTable([ 'rows' => 100 ]);
+        BaseDatabaseStorageProvider::$ORDER_BY = true;
+        BaseDatabaseStorageProvider::$ORDER_BY_DIRECTION = 'DESC';
+        $provider = $this->getUserProvider()->addOrderBy(function () {
+            return Manager::connection()->raw('created_at');
+        });
+        $result = $provider->export();
+        $this->assertTrue($result);
+        $first = $this->getNthRowFrom($provider->filename())[4];
+        $second = $this->getNthRowFrom($provider->filename(), 2)[4];
+
+        $format = 'Y-m-d H:i:s';
+        $this->assertTrue(Carbon::createFromFormat($format, $first)->gte(Carbon::createFromFormat($format, $second)));
+    }
+
+    /**
+     * condition
+     * connection
+     * db
+     * joins
+     * order by
+     * order direction
+     * columns
+     * headers
+     * limit
+     * fetch using
+     * mutation
+     * exit on error
+     * get writer content
+     * get writer
+     * builder
+     * exception handler
+     */
     /*public function testMultipleTableEntries () {
         $this->generateMembersData([ 'lines' => 20, ]);
         BaseDatabaseStorageProvider::$ENTRIES = true;
