@@ -375,16 +375,19 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER > 0);
     }
 
-    /*
+    public function testDoesNotExitOnFailureIfFalse () {
+        $this->seedUserTable([ 'rows' => 10 ]);
 
-    public function testExitOnFailureIfFalse () {
-        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 2, 'lines' => 5 ]);
-        BaseDatabaseStorageProvider::$SKIP_EMPTY = false;
+        BaseDatabaseStorageProvider::$LIMIT = 3;
+        BaseDatabaseStorageProvider::$FILE_OPEN_MODE = 'r';
         BaseDatabaseStorageProvider::$EXIT_ON_ERROR = false;
 
-        $this->getCompanyProvider()->export();
-        $this->assertTrue(BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER == 2);
+        // false for exit on failure will return true
+        $this->assertTrue($this->getUserProvider()->export());
+        $this->assertTrue(BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER == 4);
     }
+
+    /*
 
     public function testExcludeCsvHeaderDealingWithProvidedHeader () {
         $count = 19;
