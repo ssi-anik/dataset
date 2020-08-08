@@ -536,20 +536,18 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(20 == $rowCount);
     }
 
+    public function testColumnMethodPullsOnlySpecificFields () {
+        $this->seedUserTable([ 'rows' => 20 ]);
+        BaseDatabaseStorageProvider::$COLUMNS = [ 'name', 'created_at' ];
+        $provider = $this->getUserProvider();
+
+        $this->assertTrue($provider->export());
+        $this->assertTrue(2 == count($this->getNthRowFrom($provider->filename())));
+    }
+
     /**
      * joins
-     * order by
-     * order direction
-     * columns
-     * headers
-     * limit
-     * fetch using
-     * mutation
-     * exit on error
-     * get writer content
-     * get writer
      * builder
-     * exception handler
      */
     /*public function testMultipleTableEntries () {
         $this->generateMembersData([ 'lines' => 20, ]);
