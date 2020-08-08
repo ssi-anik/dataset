@@ -10,8 +10,7 @@ class DatabaseStorageTest extends BaseTestClass
         parent::tearDown();
 
         // cleanup the auto generated files
-        $files = [
-            __DIR__ . '/Providers/users.csv',
+        $files = [//            __DIR__ . '/Providers/users.csv',
         ];
         foreach ( $files as $file ) {
             if (file_exists($file)) {
@@ -129,15 +128,37 @@ class DatabaseStorageTest extends BaseTestClass
         return (new UserProvider($this->container));
     }
 
-    private function getLinesFrom ($file, $lines = 1, array $config = []) {
+    private function getStringLinesFrom ($file, $rows = 1, array $config = []) : array {
+        $data = [];
+        $length = $config['length'] ?? 2048;
+
+        if (($handle = fopen($file, "r")) !== false) {
+            do {
+                if (($lines = fgets($handle, $length)) === false) {
+                    break;
+                }
+                $data[] = $lines;
+                if (--$rows <= 0) {
+                    break;
+                }
+            } while ( true );
+
+            fclose($handle);
+        }
+
+        return $data;
+    }
+
+    private function getLinesFrom ($file, $lines = 1, array $config = []) : array {
         $delimiter = $config['delimiter'] ?? ',';
         $enclosure = $config['enclosure'] ?? '"';
         $escape = $config['escape'] ?? '\\';
+        $length = $config['length'] ?? 2048;
 
         $data = [];
         if (($handle = fopen($file, "r")) !== false) {
             do {
-                if (($columns = fgetcsv($handle, 1024, $delimiter, $enclosure, $escape)) === false) {
+                if (($columns = fgetcsv($handle, $length, $delimiter, $enclosure, $escape)) === false) {
                     break;
                 }
                 $data[] = $columns;
@@ -152,7 +173,11 @@ class DatabaseStorageTest extends BaseTestClass
         return $data;
     }
 
-    private function getNthLineFrom ($file, $line = 1, array $config = []) {
+    private function getNthStringLineFrom ($file, $row = 1, array $config = []) : string {
+        return $this->getStringLinesFrom($file, $row, $config)[$row - 1];
+    }
+
+    private function getNthLineFrom ($file, $line = 1, array $config = []) : array {
         return $this->getLinesFrom($file, $line, $config)[$line - 1];
     }
 
@@ -300,23 +325,21 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(6 === count($firstLine));
     }
 
-    /*public function testReadDifferentCsvDelimiter () {
-        $count = 10;
-        $this->generateCompaniesData([ 'lines' => $count, 'delimiter' => '|' ]);
-        BaseCsvStorageProvider::$DELIMITER = '|';
-        $this->getCompanyProvider()->addMutation(function ($record) {
-            return [
-                'slug' => str_replace(' ', '-', strtolower($this->getFaker()->sentence())),
-            ];
-        })->export();
+    public function testUseDifferentCsvDelimiter () {
+        $this->seedUserTable();
+        BaseDatabaseStorageProvider::$DELIMITER = $delimiter = '|';
+        $provider = $this->getUserProvider();
+        $this->assertTrue($provider->export());
 
-        $this->assertTrue(Manager::table('companies')->count() == $count);
+        $firstLine = $this->getNthStringLineFrom($filename = $provider->filename());
+        // no of columns are 6 in users table
+        $this->assertTrue(6 <= count(explode($delimiter, $firstLine)));
     }
 
-    public function testStreamFilters () {
+    /*public function testStreamFilters () {
         $count = 10;
         $data = $this->generateCompaniesData([ 'lines' => $count ]);
-        BaseCsvStorageProvider::$STREAM_FILTERS = [ 'string.toupper' ];
+        BaseDatabaseStorageProvider::$STREAM_FILTERS = [ 'string.toupper' ];
         $this->getCompanyProvider()->addMutation(function ($record) {
             return [ 'slug' => preg_replace('/[^a-z0-9]/i', '-', $record['ADDRESS']) ];
         })->addFilter(function ($record) {
@@ -332,13 +355,13 @@ class DatabaseStorageTest extends BaseTestClass
 
     public function testFileOpenMode () {
         $this->generateCompaniesData();
-        BaseCsvStorageProvider::$FILE_OPEN_MODE = 'r+';
+        BaseDatabaseStorageProvider::$FILE_OPEN_MODE = 'r+';
 
         $this->assertTrue($this->getCompanyProvider()->export());
     }
 
     public function testDifferentFileReader () {
-        BaseCsvStorageProvider::$HAS_FILE_READER = true;
+        BaseDatabaseStorageProvider::$HAS_FILE_READER = true;
 
         $this->assertTrue($this->getCompanyProvider()->addFilter(function ($record) {
             return [
@@ -355,7 +378,7 @@ class DatabaseStorageTest extends BaseTestClass
 
     public function testDoNotSkipEmptyLines () {
         $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 5 ]);
-        BaseCsvStorageProvider::$SKIP_EMPTY = false;
+        BaseDatabaseStorageProvider::$SKIP_EMPTY = false;
 
         $this->assertFalse($this->getCompanyProvider()->export());
     }
@@ -364,31 +387,31 @@ class DatabaseStorageTest extends BaseTestClass
         $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 9 ]);
 
         $this->getCompanyProvider()->export();
-        $this->assertTrue(BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER == 0);
+        $this->assertTrue(BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER == 0);
     }
 
     public function testExceptionIsReceivedByMethod () {
         $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 9 ]);
-        BaseCsvStorageProvider::$SKIP_EMPTY = false;
+        BaseDatabaseStorageProvider::$SKIP_EMPTY = false;
 
         $this->getCompanyProvider()->export();
-        $this->assertTrue(BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER > 0);
+        $this->assertTrue(BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER > 0);
     }
 
     public function testExitOnFailureIfFalse () {
         $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 2, 'lines' => 5 ]);
-        BaseCsvStorageProvider::$SKIP_EMPTY = false;
-        BaseCsvStorageProvider::$EXIT_ON_ERROR = false;
+        BaseDatabaseStorageProvider::$SKIP_EMPTY = false;
+        BaseDatabaseStorageProvider::$EXIT_ON_ERROR = false;
 
         $this->getCompanyProvider()->export();
-        $this->assertTrue(BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER == 2);
+        $this->assertTrue(BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER == 2);
     }
 
     public function testExcludeCsvHeaderDealingWithProvidedHeader () {
         $count = 19;
         $this->generateCompaniesData([ 'lines' => $count ]);
-        BaseCsvStorageProvider::$HEADER_OFFSET = null;
-        BaseCsvStorageProvider::$HEADERS = [ 'name', 'address', 'image_url' ];
+        BaseDatabaseStorageProvider::$HEADER_OFFSET = null;
+        BaseDatabaseStorageProvider::$HEADERS = [ 'name', 'address', 'image_url' ];
         $this->getCompanyProvider()->addMutation(function ($record) {
             return [
                 'slug' => str_replace(' ', '-', strtolower($this->getFaker()->sentence())),
@@ -401,7 +424,7 @@ class DatabaseStorageTest extends BaseTestClass
     public function testExcludeCsvHeaderDealingZeroBasedIndex () {
         $count = 10;
         $this->generateCompaniesData([ 'lines' => $count ]);
-        BaseCsvStorageProvider::$HEADER_OFFSET = null;
+        BaseDatabaseStorageProvider::$HEADER_OFFSET = null;
         $this->getCompanyProvider()->addFilter(function ($record) {
             return [
                 'name'      => $record[0],
@@ -417,7 +440,7 @@ class DatabaseStorageTest extends BaseTestClass
 
     public function testCustomHeader () {
         $this->generateCompaniesData();
-        BaseCsvStorageProvider::$HEADERS = [ 'NAME', 'ADDRESS', 'IMAGE_URL' ];
+        BaseDatabaseStorageProvider::$HEADERS = [ 'NAME', 'ADDRESS', 'IMAGE_URL' ];
         $result = $this->getCompanyProvider()->addFilter(function ($record) {
             return [
                 'name'      => $record['NAME'],
@@ -435,7 +458,7 @@ class DatabaseStorageTest extends BaseTestClass
 
     public function testLimitingCsvRows () {
         $this->generateCompaniesData([ 'lines' => 20 ]);
-        BaseCsvStorageProvider::$LIMIT = 3;
+        BaseDatabaseStorageProvider::$LIMIT = 3;
         $processedBatch = 0;
         $this->addEventListener('dataset.reader.iteration.batch', function () use (&$processedBatch) {
             ++$processedBatch;
@@ -447,8 +470,8 @@ class DatabaseStorageTest extends BaseTestClass
     public function testDoNotUseDatabaseTransaction () {
         $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 10, 'lines' => 15 ]);
 
-        BaseCsvStorageProvider::$SKIP_EMPTY = false;
-        BaseCsvStorageProvider::$USE_TRANSACTION = false;
+        BaseDatabaseStorageProvider::$SKIP_EMPTY = false;
+        BaseDatabaseStorageProvider::$USE_TRANSACTION = false;
 
         $result = $this->getCompanyProvider()->export();
         $this->assertFalse($result);
@@ -457,7 +480,7 @@ class DatabaseStorageTest extends BaseTestClass
 
     public function testDatabaseTransactionNoInsertionOnFailure () {
         $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 7, 'lines' => 10 ]);
-        BaseCsvStorageProvider::$SKIP_EMPTY = false;
+        BaseDatabaseStorageProvider::$SKIP_EMPTY = false;
 
         $this->getCompanyProvider()->export();
         $this->assertTrue(0 == Manager::table('companies')->count());
@@ -465,7 +488,7 @@ class DatabaseStorageTest extends BaseTestClass
 
     public function testMultipleTableEntries () {
         $this->generateMembersData([ 'lines' => 20, ]);
-        BaseCsvStorageProvider::$ENTRIES = true;
+        BaseDatabaseStorageProvider::$ENTRIES = true;
         $this->getMemberProvider()->addEntries(function () {
             return [
                 'members' => function (Model $model, array $record) {
@@ -507,7 +530,7 @@ class DatabaseStorageTest extends BaseTestClass
             'duplication'       => true,
             'duplication_count' => 5,
         ]);
-        BaseCsvStorageProvider::$ENTRIES = true;
+        BaseDatabaseStorageProvider::$ENTRIES = true;
 
         $this->getMemberProvider()->addEntries(function () {
             return [
