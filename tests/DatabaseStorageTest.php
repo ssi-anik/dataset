@@ -400,26 +400,25 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(3 === count($secondRow));
     }
 
-    /*
+    public function testAddCustomHeaderToCsv () {
+        $this->seedUserTable([ 'rows' => 15 ]);
+        BaseDatabaseStorageProvider::$HEADERS = $headers = [
+            'name'       => 'NaMe',
+            'created_at' => 'Date of Joining',
+            'email'      => 'emAIL',
+            'number'     => 'No',
+        ];
+        $provider = $this->getUserProvider();
 
-    public function testExcludeCsvHeaderDealingZeroBasedIndex () {
-        $count = 10;
-        $this->generateCompaniesData([ 'lines' => $count ]);
-        BaseDatabaseStorageProvider::$HEADER_OFFSET = null;
-        $this->getCompanyProvider()->addFilter(function ($record) {
-            return [
-                'name'      => $record[0],
-                'slug'      => $record[0],
-                'image_url' => $record[2],
-            ];
-        })->addMutation(function ($record) {
-            return [];
-        })->export();
+        $this->assertTrue($provider->export());
 
-        $this->assertTrue(Manager::table('companies')->count() == $count + 1);
+        $firstRow = $this->getNthRowFrom($provider->filename(), 1);
+        $secondRow = $this->getNthRowFrom($provider->filename(), 2);
+        $this->assertTrue($firstRow == array_values($headers));
+        $this->assertTrue(4 === count($secondRow));
     }
 
-    public function testCustomHeader () {
+    /*public function testCustomHeader () {
         $this->generateCompaniesData();
         BaseDatabaseStorageProvider::$HEADERS = [ 'NAME', 'ADDRESS', 'IMAGE_URL' ];
         $result = $this->getCompanyProvider()->addFilter(function ($record) {
