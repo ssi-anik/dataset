@@ -102,21 +102,25 @@ class DatabaseStorageTest extends BaseTestClass
         $faker = $this->getFaker($locale);
         $now = Carbon::now();
         $dateVariations = [ 0, 5, 7, 15, 30, 100, 150, 180 ];
-        $dates = [];
+        /*$dates = [];
         foreach ( $dateVariations as $variation ) {
-            $dates[] = (clone $now)->subDays($variation)->startOfHour()->toDateTimeString();
-        }
+            $dates[] = (clone $now)->subDays($variation);
+            // ->toDateTimeString();
+        }*/
 
         $data = [];
         foreach ( range(1, $rows) as $i ) {
-            $onDate = $dates[rand(0, count($dates) - 1)];
+            $onDate = (clone $now)->subDays($faker->randomElement($dateVariations))
+                                  ->subHours($faker->randomElement(range(0, 23)))
+                                  ->subMinutes($faker->randomElement(range(0, 59)))
+                                  ->subSeconds($faker->randomElement(range(0, 59)));
             // $onDate = $dates[array_rand($dates, 1)];
             $data[] = [
                 'name'       => $enclosure ? sprintf('"%s"', $faker->name) : $faker->name,
                 'email'      => $faker->companyEmail,
                 'number'     => $faker->e164PhoneNumber,
-                'created_at' => $onDate,
-                'updated_at' => $onDate,
+                'created_at' => $onDate->toDateTimeString(),
+                'updated_at' => $onDate->toDateTimeString(),
             ];
         }
 
