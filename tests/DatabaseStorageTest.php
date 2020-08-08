@@ -19,6 +19,7 @@ class DatabaseStorageTest extends BaseTestClass
         }
 
         BaseDatabaseStorageProvider::$TYPE = 'writer';
+        BaseDatabaseStorageProvider::$DB_MANAGER = false;
         BaseDatabaseStorageProvider::$EXIT_ON_ERROR = true;
         BaseDatabaseStorageProvider::$LIMIT = 50;
         BaseDatabaseStorageProvider::$FETCH_USING = 'cursor';
@@ -520,10 +521,22 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(Carbon::createFromFormat($format, $first)->gte(Carbon::createFromFormat($format, $second)));
     }
 
+    public function testDatabaseConnectionUsingDbMethod () {
+        $this->seedUserTable([ 'rows' => 20, 'connection' => 'sqlite' ]);
+        BaseDatabaseStorageProvider::$DB_MANAGER = true;
+        $rowCount = 0;
+        $this->addEventListener($this->formatEventName('iteration.batch'), function (...$payload) use (&$rowCount) {
+            $rowCount += $payload[2];
+        });
+        $provider = $this->getUserProvider()->addDb(function () {
+            return Manager::connection('sqlite');
+        });
+        $result = $provider->export();
+        $this->assertTrue($result);
+        $this->assertTrue(20 == $rowCount);
+    }
+
     /**
-     * condition
-     * connection
-     * db
      * joins
      * order by
      * order direction

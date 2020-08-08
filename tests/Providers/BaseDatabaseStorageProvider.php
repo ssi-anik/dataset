@@ -9,6 +9,7 @@ use League\Csv\Writer;
 class BaseDatabaseStorageProvider extends DatabaseStorage
 {
     static $TYPE = 'writer';
+    static $DB_MANAGER = false;
     static $EXIT_ON_ERROR = true;
     static $LIMIT = 50;
     static $FETCH_USING = 'cursor';
@@ -34,6 +35,7 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
     private $orderBy = null;
     private $mutate = null;
     private $builder = null;
+    private $db = null;
 
     protected function type () : string {
         return empty(static::$TYPE) ? parent::type() : static::$TYPE;
@@ -99,8 +101,19 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
         throw new \Exception('Builder is not implemented but called');
     }
 
+    // provides dynamically adding mutation function
+    public function addDb ($callback) {
+        $this->db = $callback;
+
+        return $this;
+    }
+
+    protected function dbThrough () {
+        return call_user_func_array($this->db, []);
+    }
+
     public function db () : Connection {
-        return parent::db();
+        return false === static::$DB_MANAGER ? parent::db() : $this->dbThrough();
     }
 
     protected function condition () : Closure {
