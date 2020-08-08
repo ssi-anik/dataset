@@ -442,35 +442,18 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(5 === count($secondRow));
     }
 
-    /*public function testCustomHeader () {
-        $this->generateCompaniesData();
-        BaseDatabaseStorageProvider::$HEADERS = [ 'NAME', 'ADDRESS', 'IMAGE_URL' ];
-        $result = $this->getCompanyProvider()->addFilter(function ($record) {
-            return [
-                'name'      => $record['NAME'],
-                'slug'      => $record['slug'],
-                'image_url' => $record['IMAGE_URL'],
-            ];
-        })->addMutation(function ($record) {
-            return [
-                'slug' => str_replace(' ', '-', strtolower($this->getFaker()->sentence())),
-            ];
-        })->export();
-
-        $this->assertTrue($result);
-    }
-
-    public function testLimitingCsvRows () {
-        $this->generateCompaniesData([ 'lines' => 20 ]);
+    public function testLimitingDatabaseQueryPerBatch () {
+        $this->seedUserTable([ 'rows' => 20 ]);
         BaseDatabaseStorageProvider::$LIMIT = 3;
         $processedBatch = 0;
-        $this->addEventListener('dataset.reader.iteration.batch', function () use (&$processedBatch) {
+        $this->addEventListener($this->formatEventName('iteration.batch'), function () use (&$processedBatch) {
             ++$processedBatch;
         });
-        $this->getCompanyProvider()->export();
+        $this->getUserProvider()->export();
         $this->assertTrue($processedBatch == 7);
     }
 
+    /*
     public function testDoNotUseDatabaseTransaction () {
         $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 10, 'lines' => 15 ]);
 
