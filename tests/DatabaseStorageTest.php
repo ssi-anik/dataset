@@ -11,7 +11,7 @@ class DatabaseStorageTest extends BaseTestClass
 
         // cleanup the auto generated files
         $files = [
-            __DIR__ . '/Providers/susers.csv',
+            __DIR__ . '/Providers/users.csv',
         ];
         foreach ( $files as $file ) {
             if (file_exists($file)) {
@@ -287,18 +287,20 @@ class DatabaseStorageTest extends BaseTestClass
         unlink($filename);
     }
 
-    /*
-
     public function testDifferentDatabaseConnection () {
-        $count = 25;
-        $this->generateCompaniesData([ 'lines' => $count ]);
-        BaseCsvStorageProvider::$CONNECTION = 'sqlite';
-        $this->getCompanyProvider()->export();
+        $this->seedUserTable([ 'connection' => 'sqlite' ]);
 
-        $this->assertTrue(Manager::connection('sqlite')->table('companies')->count() == $count);
+        BaseDatabaseStorageProvider::$CONNECTION = 'sqlite';
+        $provider = $this->getUserProvider();
+        $this->assertTrue($provider->export());
+
+        $firstLine = $this->getNthLineFrom($filename = $provider->filename());
+        // no of columns are 6 in users table
+        $this->assertTrue(file_exists($filename));
+        $this->assertTrue(6 === count($firstLine));
     }
 
-    public function testReadDifferentCsvDelimiter () {
+    /*public function testReadDifferentCsvDelimiter () {
         $count = 10;
         $this->generateCompaniesData([ 'lines' => $count, 'delimiter' => '|' ]);
         BaseCsvStorageProvider::$DELIMITER = '|';
