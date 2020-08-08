@@ -19,8 +19,8 @@ abstract class BaseTestClass extends TestCase
 
     public static function tearDownAfterClass () : void {
         parent::tearDownAfterClass();
-        /*unlink(__DIR__ . '/dataset-default.sqlite');
-        unlink(__DIR__ . '/dataset-sqlite.sqlite');*/
+        unlink(__DIR__ . '/dataset-default.sqlite');
+        unlink(__DIR__ . '/dataset-sqlite.sqlite');
     }
 
     protected function setUp () : void {

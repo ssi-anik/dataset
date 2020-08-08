@@ -173,7 +173,7 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
         return static::$CUSTOM_BUILDER ? $this->builderThrough() : parent::getBuilder();
     }
 
-    protected function connection () {
+    protected function connection () : string {
         return static::$CONNECTION;
     }
 

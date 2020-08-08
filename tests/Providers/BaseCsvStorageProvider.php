@@ -132,7 +132,7 @@ DATA
         return static::$EXIT_ON_ERROR;
     }
 
-    protected function connection () {
+    protected function connection () : string {
         return static::$CONNECTION;
     }
 
