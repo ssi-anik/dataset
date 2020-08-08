@@ -482,6 +482,10 @@ class DatabaseStorageTest extends BaseTestClass
 
     public function testExceptionIsReceivedByMethod () {
         $this->seedUserTable();
+        // in order to receive the exception, a file should be in the place
+        // Because, in read mode it can't write to file
+        // automatically deleted on tearDown method
+        file_put_contents(__DIR__ . '/Providers/users.csv', '');
         BaseDatabaseStorageProvider::$FILE_OPEN_MODE = 'r';
 
         $this->assertFalse($this->getUserProvider()->export());
@@ -490,6 +494,10 @@ class DatabaseStorageTest extends BaseTestClass
 
     public function testDoesNotExitOnFailureIfFalse () {
         $this->seedUserTable([ 'rows' => 10 ]);
+        // in order to receive the exception, a file should be in the place
+        // Because, in read mode it can't write to file
+        // automatically deleted on tearDown method
+        file_put_contents(__DIR__ . '/Providers/users.csv', '');
 
         BaseDatabaseStorageProvider::$LIMIT = 3;
         BaseDatabaseStorageProvider::$FILE_OPEN_MODE = 'r';
