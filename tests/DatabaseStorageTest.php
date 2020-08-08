@@ -466,6 +466,20 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue($isCursor);
     }
 
+    public function testUseBuilderChunkForPullingData () {
+        $this->seedUserTable([ 'rows' => 20 ]);
+        $isChunk = false;
+        $this->addEventListener($this->formatEventName('iteration.started'), function (...$payload) use (&$isChunk) {
+            $isChunk = isset($payload[1]) && $payload[1] == 'writer.chunk';
+
+            // early exit, don't process further
+            return false;
+        });
+        BaseDatabaseStorageProvider::$FETCH_USING = 'chunk';
+        $this->getUserProvider()->export();
+        $this->assertTrue($isChunk);
+    }
+
     /*public function testMultipleTableEntries () {
         $this->generateMembersData([ 'lines' => 20, ]);
         BaseDatabaseStorageProvider::$ENTRIES = true;
