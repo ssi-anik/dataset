@@ -282,6 +282,13 @@ abstract class DatabaseStorage
     }
 
     /**
+     * Get content of the write instance
+     */
+    public function getWriterContent () : string {
+        return $this->writer->getContent();
+    }
+
+    /**
      * Instantiate the file writer
      */
     private function prepareWriter () : bool {
