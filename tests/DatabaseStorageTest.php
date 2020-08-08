@@ -418,6 +418,30 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(4 === count($secondRow));
     }
 
+    public function testAddExtraColumnThatDoesNotExistInDatabase () {
+        $this->seedUserTable([ 'rows' => 15 ]);
+        BaseDatabaseStorageProvider::$HEADERS = $headers = [
+            'name'       => 'Name',
+            'created_at' => 'Date of joining',
+            'email'      => 'Email',
+            'number'     => 'Number',
+            'difference' => 'Number of days',
+        ];
+        $provider = $this->getUserProvider()->addMutation(function ($r) {
+            return [
+                'difference' => Carbon::now()->diffInDays(Carbon::createFromFormat('Y-m-d H:i:s', $r['created_at'])),
+                'created_at' => Carbon::createFromFormat('Y-m-d H:i:s', $r['created_at'])->toDateString(),
+            ];
+        });
+
+        $this->assertTrue($provider->export());
+
+        $firstRow = $this->getNthRowFrom($provider->filename(), 1);
+        $secondRow = $this->getNthRowFrom($provider->filename(), 2);
+        $this->assertTrue($firstRow == array_values($headers));
+        $this->assertTrue(5 === count($secondRow));
+    }
+
     /*public function testCustomHeader () {
         $this->generateCompaniesData();
         BaseDatabaseStorageProvider::$HEADERS = [ 'NAME', 'ADDRESS', 'IMAGE_URL' ];
