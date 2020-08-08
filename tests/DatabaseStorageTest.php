@@ -348,29 +348,15 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue(6 === substr_count($firstLine, $enclosed));
     }
 
-    /*public function testStreamFilters () {
-        $count = 10;
-        $data = $this->generateCompaniesData([ 'lines' => $count ]);
-        BaseDatabaseStorageProvider::$STREAM_FILTERS = [ 'string.toupper' ];
-        $this->getCompanyProvider()->addMutation(function ($record) {
-            return [ 'slug' => preg_replace('/[^a-z0-9]/i', '-', $record['ADDRESS']) ];
-        })->addFilter(function ($record) {
-            return [
-                'name'      => $record['NAME'],
-                'image_url' => $record['IMAGE_URL'],
-                'slug'      => $record['NAME'],
-            ];
-        })->export();
-
-        $this->assertTrue(Manager::table('companies')->find(1)->name == strtoupper($data[1][0]));
-    }
-
     public function testFileOpenMode () {
-        $this->generateCompaniesData();
+        $this->seedUserTable();
+        // r+ also gives permission to write
         BaseDatabaseStorageProvider::$FILE_OPEN_MODE = 'r+';
 
-        $this->assertTrue($this->getCompanyProvider()->export());
+        $this->assertTrue($this->getUserProvider()->export());
     }
+
+    /*
 
     public function testDifferentFileReader () {
         BaseDatabaseStorageProvider::$HAS_FILE_READER = true;
