@@ -11,7 +11,9 @@ class DatabaseStorageTest extends BaseTestClass
         parent::tearDown();
 
         // cleanup the auto generated files
-        $files = [//            __DIR__ . '/Providers/users.csv',
+        $files = [
+            __DIR__ . '/Providers/users.csv',
+            __DIR__ . '/Providers/orders.csv',
         ];
         foreach ( $files as $file ) {
             if (file_exists($file)) {
@@ -814,97 +816,4 @@ class DatabaseStorageTest extends BaseTestClass
 
         $this->assertTrue(trim($this->getNthStringLineFrom($provider->filename())) == $stringHeader);
     }
-
-    /**
-     * joins
-     * builder
-     */
-    /*public function testMultipleTableEntries () {
-        $this->generateMembersData([ 'lines' => 20, ]);
-        BaseDatabaseStorageProvider::$ENTRIES = true;
-        $this->getMemberProvider()->addEntries(function () {
-            return [
-                'members' => function (Model $model, array $record) {
-                    $model->name = $record['name'];
-                    $model->age = $record['age'];
-                    $model->created_at = date('Y-m-d H:i:s');
-                    $model->updated_at = date('Y-m-d H:i:s');
-                    $model->save();
-
-                    return $model;
-                },
-                'phones'  => function (Model $model, array $record, array $previous) {
-                    $member = $previous['members'];
-
-                    $model->member_id = $member->id;
-                    $model->number = $record['phone'];
-                    $model->save();
-
-                    return $model;
-                },
-                'emails'  => function (Model $model, array $record, array $previous) {
-                    $model->member_id = $previous['members']->id;
-                    $model->email = $record['email'];
-                    $model->save();
-
-                    return $model;
-                },
-            ];
-        })->export();
-
-        $this->assertTrue(Manager::table('members')->count() == 20);
-        $this->assertTrue(Manager::table('phones')->count() == 20);
-        $this->assertTrue(Manager::table('emails')->count() == 20);
-    }
-
-    public function testMultipleTableEntriesCheckingDuplicateBeforeEntry () {
-        $this->generateMembersData([
-            'lines'             => 50,
-            'duplication'       => true,
-            'duplication_count' => 5,
-        ]);
-        BaseDatabaseStorageProvider::$ENTRIES = true;
-
-        $this->getMemberProvider()->addEntries(function () {
-            return [
-                'members' => function (Model $model, array $record) {
-                    // checks if any row exists with name,
-                    $member = Manager::table('members')->where('name', $record['name'])->first();
-                    if ($member) {
-                        $model->id = $member->id;
-                        $model->exists = true;
-                    }
-
-                    $model->name = $record['name'];
-                    $model->age = $record['age'];
-                    $model->created_at = date('Y-m-d H:i:s');
-                    $model->updated_at = date('Y-m-d H:i:s');
-
-                    $model->save();
-
-                    return $model;
-                },
-                'phones'  => function (Model $model, array $record, array $previous) {
-                    $member = $previous['members'];
-
-                    $model->member_id = $member->id;
-                    $model->number = $record['phone'];
-                    $model->save();
-
-                    return $model;
-                },
-                'emails'  => function (Model $model, array $record, array $previous) {
-                    $model->member_id = $previous['members']->id;
-                    $model->email = $record['email'];
-                    $model->save();
-
-                    return $model;
-                },
-            ];
-        })->export();
-
-        $this->assertTrue(Manager::table('members')->count() == 50);
-        $this->assertTrue(Manager::table('phones')->count() == 55);
-        $this->assertTrue(Manager::table('emails')->count() == 55);
-    }*/
 }

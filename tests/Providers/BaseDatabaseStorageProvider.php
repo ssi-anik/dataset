@@ -198,7 +198,6 @@ class BaseDatabaseStorageProvider extends DatabaseStorage
     }
 
     protected function raisedException (Throwable $t) : void {
-        var_dump($t->getMessage());
         static::$EXCEPTION_RECEIVED = true;
         ++static::$HANDLED_EXCEPTION_COUNTER;
     }
