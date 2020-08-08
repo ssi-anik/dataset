@@ -453,27 +453,20 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue($processedBatch == 7);
     }
 
-    /*
-    public function testDoNotUseDatabaseTransaction () {
-        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 10, 'lines' => 15 ]);
+    public function testUseDatabaseCursorForPullingData () {
+        $this->seedUserTable([ 'rows' => 20 ]);
+        $isCursor = false;
+        $this->addEventListener($this->formatEventName('iteration.started'), function (...$payload) use (&$isCursor) {
+            $isCursor = isset($payload[1]) && $payload[1] == 'writer.cursor';
 
-        BaseDatabaseStorageProvider::$SKIP_EMPTY = false;
-        BaseDatabaseStorageProvider::$USE_TRANSACTION = false;
-
-        $result = $this->getCompanyProvider()->export();
-        $this->assertFalse($result);
-        $this->assertTrue(10 == Manager::table('companies')->count());
+            // early exit, don't process further
+            return false;
+        });
+        $this->getUserProvider()->export();
+        $this->assertTrue($isCursor);
     }
 
-    public function testDatabaseTransactionNoInsertionOnFailure () {
-        $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 7, 'lines' => 10 ]);
-        BaseDatabaseStorageProvider::$SKIP_EMPTY = false;
-
-        $this->getCompanyProvider()->export();
-        $this->assertTrue(0 == Manager::table('companies')->count());
-    }
-
-    public function testMultipleTableEntries () {
+    /*public function testMultipleTableEntries () {
         $this->generateMembersData([ 'lines' => 20, ]);
         BaseDatabaseStorageProvider::$ENTRIES = true;
         $this->getMemberProvider()->addEntries(function () {
