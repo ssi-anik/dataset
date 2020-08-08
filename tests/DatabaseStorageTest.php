@@ -2,6 +2,7 @@
 
 use Carbon\Carbon;
 use Illuminate\Database\Capsule\Manager;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Schema\Blueprint;
 
 class DatabaseStorageTest extends BaseTestClass
@@ -90,6 +91,7 @@ class DatabaseStorageTest extends BaseTestClass
                 $table->smallInteger('user_id');
                 $table->string('order_uuid');
                 $table->smallInteger('total_price');
+                $table->timestamp('created_at');
             });
 
             $this->createTableMigration($connection, 'order_details', function (Blueprint $table) {
@@ -196,11 +198,19 @@ class DatabaseStorageTest extends BaseTestClass
 
         $orders = [];
         $details = [];
+        $now = Carbon::now();
+        $dateVariations = [ 0, 5, 7, 15, 30, 100, 150, 180 ];
+
         foreach ( range(1, $rows) as $i ) {
             $orders[] = [
                 'user_id'     => $faker->randomElement(range($userMin, $userMax)),
                 'order_uuid'  => $faker->unique()->uuid,
                 'total_price' => $faker->randomFloat(2, 500, 5000),
+                'created_at'  => (clone $now)->subDays($faker->randomElement($dateVariations))
+                                             ->subHours($faker->randomElement(range(0, 23)))
+                                             ->subMinutes($faker->randomElement(range(0, 59)))
+                                             ->subSeconds($faker->randomElement(range(0, 59)))
+                                             ->toDateTimeString(),
             ];
 
             foreach ( range(1, $faker->randomElement(range(3, 9))) as $j ) {
@@ -715,6 +725,86 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue($provider->export());
 
         $this->assertTrue($rowsPicked == $data['details_count']);
+    }
+
+    public function testQueryBuilderFunction () {
+        $connection = 'default';
+        $this->seedUserTable();
+        $this->seedCategoryTable();
+        $this->seedProductTable();
+        $data = $this->seedOrderTable();
+
+        BaseDatabaseStorageProvider::$HEADERS = $headers = [
+            'order_uuid'     => 'OrderUUID',
+            'username'       => 'User\'s name',
+            'product_name'   => 'Ordered product',
+            'product_image'  => 'Product image',
+            'product_price'  => 'Price of product on order',
+            'category_name'  => 'Category',
+            'category_image' => 'Category Image',
+        ];
+        BaseDatabaseStorageProvider::$CUSTOM_BUILDER = true;
+
+        $rowsPicked = 0;
+        $this->addEventListener($this->formatEventName('iteration.batch'), function (...$payload) use (&$rowsPicked) {
+            $rowsPicked += $payload[2];
+        });
+
+        $now = Carbon::now();
+        $beforeDate = (clone $now)->subDays(10);
+
+        $provider = $this->getOrderProvider()->addBuilder(function () use ($connection, $beforeDate) : Builder {
+            return Manager::connection($connection)
+                          ->table('orders')
+                          ->where(function (Builder $q) use ($beforeDate) {
+                              return $q->where('orders.created_at', '<=', $beforeDate->toDateTimeString());
+                          })
+                          ->join('order_details', 'order_details.order_id', '=', 'orders.id')
+                          ->join('products', 'order_details.product_id', '=', 'products.id')
+                          ->join('users', 'orders.user_id', '=', 'users.id')
+                          ->join('categories', 'products.category_id', '=', 'categories.id')
+                          ->select([
+                              Manager::connection($connection)->raw('orders.order_uuid'),
+                              Manager::connection($connection)->raw('users.name as username'),
+                              Manager::connection($connection)->raw("'----' as separator_one"),
+                              Manager::connection($connection)->raw('products.name as product_name'),
+                              Manager::connection($connection)->raw('products.image_url as product_image'),
+                              Manager::connection($connection)->raw('order_details.price as product_price'),
+                              Manager::connection($connection)->raw("'----' as separator_two"),
+                              Manager::connection($connection)->raw('categories.image_url as category_image'),
+                              Manager::connection($connection)->raw('categories.name as category_name'),
+                          ]);
+
+        });
+        $this->assertTrue($provider->export());
+
+        // get the order ids of the orders that were created before the $beforeDate
+        $orderIds = [];
+        foreach ( $data['orders'] as $idx => $order ) {
+            if (Carbon::createFromFormat('Y-m-d H:i:s', $order['created_at'])->lte($beforeDate)) {
+                $orderIds[] = $idx + 1;
+            }
+        }
+
+        $validOrders = [];
+        foreach ( $data['order_details'] as $details ) {
+            if (in_array($details['order_id'], $orderIds)) {
+                $validOrders[] = $details['order_id'];
+            }
+        }
+
+        $this->assertTrue($rowsPicked == count($validOrders));
+
+        $thirdRow = $this->getNthRowFrom($provider->filename(), 3);
+        $this->assertTrue(strpos($thirdRow[2], 'Product -') === 0);
+        $this->assertTrue(strpos($thirdRow[5], 'Category -') === 0);
+
+        // build header, if the header contains space then it should be enclosed with the enclose character
+        $stringHeader = implode(',', array_map(function ($column) {
+            return strpos($column, ' ') !== false ? sprintf('"%s"', $column) : $column;
+        }, $headers));
+
+        $this->assertTrue(trim($this->getNthStringLineFrom($provider->filename())) == $stringHeader);
     }
 
     /**
