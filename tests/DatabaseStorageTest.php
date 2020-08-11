@@ -739,16 +739,21 @@ class DatabaseStorageTest extends BaseTestClass
                     'users.id',
                 ],
                 [
-                    'categories',
-                    'products.category_id',
-                    '=',
-                    'categories.id',
+                    'table'    => 'categories',
+                    'first'    => 'products.category_id',
+                    'operator' => '=',
+                    'second'   => 'categories.id',
+                    'type'     => 'inner',
+                    'where'    => false,
                 ],
             ];
         });
         $this->assertTrue($provider->export());
 
         $this->assertTrue($rowsPicked == $data['details_count']);
+        $nthRow = $this->getNthRowFrom($provider->filename(), 2);
+        $this->assertTrue(count($nthRow) == 7);
+        $this->assertTrue(strpos($this->getNthRowFrom($provider->filename(), 2)[5], 'Category -') === 0);
     }
 
     public function testQueryBuilderFunction () {
