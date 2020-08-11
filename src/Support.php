@@ -26,7 +26,7 @@ trait Support
      *
      * @return string
      */
-    protected function makeDatasetEvent (string $event) : string {
+    private function makeDatasetEvent (string $event) : string {
         return 'dataset.' . $this->type() . '.' . $event;
     }
 
@@ -48,7 +48,7 @@ trait Support
      * @return bool
      * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
-    protected function exitOnEventResponse (string $event, array $parameters = []) : bool {
+    private function exitOnEventResponse (string $event, array $parameters = []) : bool {
         $result = $this->fireEvent($event, $parameters);
         if (false === $result) {
             $this->fireEvent('exiting', [ 'event' => $this->makeDatasetEvent($event) ]);
@@ -87,10 +87,10 @@ trait Support
     }
 
     /**
-     * Get table name of the class
+     * Guess the name from the class
      */
-    protected function tableize () : string {
-        return $this->inflector()->tableize(class_basename($this));
+    private function guessName () : string {
+        return $this->inflector()->pluralize($this->inflector()->tableize(class_basename($this)));
     }
 
     /**
@@ -111,13 +111,13 @@ trait Support
      * Get the table name to read from
      */
     protected function table () : string {
-        return $this->inflector()->pluralize($this->tableize());
+        return $this->guessName();
     }
 
     /**
      * Get the directory of the class instance
      */
-    protected function instanceDirectory () : string {
+    private function instanceDirectory () : string {
         return dirname((new ReflectionClass(static::class))->getFileName());
     }
 
@@ -125,7 +125,7 @@ trait Support
      * Filename for the CSV file
      */
     protected function filename () : string {
-        return sprintf('%s/%s.csv', $this->instanceDirectory(), $this->inflector()->pluralize($this->table()));
+        return sprintf('%s/%s.csv', $this->instanceDirectory(), $this->guessName());
     }
 
     /**
