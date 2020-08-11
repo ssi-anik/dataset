@@ -253,6 +253,7 @@ abstract class CsvStorage
         }
 
         $response = $this->processSource();
+
         if ($this->useTransaction()) {
             $response ? $this->db()->commit() : $this->db()->rollBack();
         }
