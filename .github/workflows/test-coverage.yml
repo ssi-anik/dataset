@@ -1,0 +1,63 @@
+name: Run tests
+on:
+    pull_request:
+    push:
+        branches:
+            - master
+            - dev
+
+jobs:
+    tests:
+        name: PHP ${{ matrix.php }} with Illuminate ${{ matrix.illuminate }}
+        runs-on: ubuntu-latest
+
+        strategy:
+            fail-fast: false
+            matrix:
+                php: [ 7.2, 7.3, 7.4, 8.0 ]
+                illuminate: [ ^6, ^7, ^8 ]
+                exclude:
+                    -   php: 7.2
+                        illuminate: ^8
+
+        steps:
+            -   name: Checkout code
+                uses: actions/checkout@v2
+
+            -   name: Install PHP
+                uses: shivammathur/setup-php@v2
+                with:
+                    php-version: ${{ matrix.php }}
+
+            -   name: Install dependencies
+                run: |
+                    composer require illuminate/database:${{ matrix.illuminate }} --no-interaction --prefer-dist
+                    composer dump-autoload -o
+
+            -   name: Run test suite
+                run: ./vendor/bin/phpunit --testdox --verbose
+
+    coverage:
+        needs: tests
+        name: Coverage
+        runs-on: ubuntu-latest
+
+        steps:
+            -   name: Checkout code
+                uses: actions/checkout@v2
+
+            -   uses: shivammathur/setup-php@v2
+                with:
+                    coverage: pcov
+                    php-version: 8.0
+
+            -   name: Install dependencies
+                run: composer install --no-interaction --prefer-dist
+
+            -   name: Run tests for coverage
+                run: ./vendor/bin/phpunit --coverage-clover=coverage.xml
+
+            -   name: Push to Codecov
+                run: bash <(curl -s https://codecov.io/bash)
+                env:
+                    CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
