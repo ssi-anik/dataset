@@ -4,3 +4,5 @@ vendor/
 docker-compose.yml
 tests/dataset-default.sqlite
 tests/dataset-sqlite.sqlite
+.phpunit.result.cache
+coverage/
