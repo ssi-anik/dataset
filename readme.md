@@ -23,7 +23,7 @@ A few examples are given in examples directory.
 
 ### Documentation
 
-Check [the documentation](bit.ly/2xtvpzb) here.
+Check [the documentation](https://bit.ly/2xtvpzb) here.
 
 ### Issues & PRs
 
