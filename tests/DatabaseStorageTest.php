@@ -309,7 +309,7 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue($this->dispatcher->until('test-true', 'test-true'));
         $this->assertTrue($this->dispatcher->until('test-count', [ 1, true, 'false' ]));
         $this->assertFalse($this->dispatcher->until('test-count'));
-        $this->assertTrue(is_null($this->dispatcher->until('no-event-listener')));
+        $this->assertNull($this->dispatcher->until('no-event-listener'));
     }
 
     public function testProvidingEventDispatcherFromOutside () {
@@ -323,7 +323,7 @@ class DatabaseStorageTest extends BaseTestClass
         // call the export method to start execution
         $result = $user->export();
 
-        $this->assertTrue(false === $result);
+        $this->assertFalse($result);
     }
 
     public function testCheckIfEventsAreFired () {
@@ -341,7 +341,7 @@ class DatabaseStorageTest extends BaseTestClass
         // call the export method to start execution
         $result = $this->getUserProvider()->export();
 
-        $this->assertTrue(false === $result);
+        $this->assertFalse($result);
         $this->assertTrue($received);
     }
 
@@ -362,7 +362,7 @@ class DatabaseStorageTest extends BaseTestClass
         // call the export method to start execution
         $result = $this->getUserProvider()->export();
 
-        $this->assertTrue(false === $result);
+        $this->assertFalse($result);
         $this->assertTrue($receivedNewType);
     }
 
@@ -391,7 +391,7 @@ class DatabaseStorageTest extends BaseTestClass
 
         $firstLine = $this->getNthRowFrom($filename);
         // no of columns are 6 in users table
-        $this->assertTrue(6 === count($firstLine));
+        $this->assertCount(6, $firstLine);
 
         $this->rollbackMigration('default', 'new-user-table');
         unlink($filename);
@@ -421,8 +421,8 @@ class DatabaseStorageTest extends BaseTestClass
 
         $firstLine = $this->getNthRowFrom($filename);
         // no of columns are 6 in users table
-        $this->assertTrue(file_exists($filename));
-        $this->assertTrue(6 === count($firstLine));
+        $this->assertFileExists($filename);
+        $this->assertCount(6, $firstLine);
 
         // delete file
         unlink($filename);
@@ -437,8 +437,8 @@ class DatabaseStorageTest extends BaseTestClass
 
         $firstLine = $this->getNthRowFrom($filename = $provider->filename());
         // no of columns are 6 in users table
-        $this->assertTrue(file_exists($filename));
-        $this->assertTrue(6 === count($firstLine));
+        $this->assertFileExists($filename);
+        $this->assertCount(6, $firstLine);
     }
 
     public function testUseDifferentCsvDelimiter () {
@@ -449,7 +449,7 @@ class DatabaseStorageTest extends BaseTestClass
 
         $firstLine = $this->getNthStringLineFrom($filename = $provider->filename());
         // no of columns are 6 in users table
-        $this->assertTrue(6 <= count(explode($delimiter, $firstLine)));
+        $this->assertLessThanOrEqual(6, count(explode($delimiter, $firstLine)));
     }
 
     public function testUseChangedEncloseCharacter () {
@@ -460,7 +460,7 @@ class DatabaseStorageTest extends BaseTestClass
 
         $firstLine = $this->getNthStringLineFrom($filename = $provider->filename());
         // name, created_at, updated_at uses double quotes around - 3 * 2 = 6
-        $this->assertTrue(6 === substr_count($firstLine, $enclosed));
+        $this->assertSame(6, substr_count($firstLine, $enclosed));
     }
 
     public function testFileOpenMode () {
@@ -479,7 +479,7 @@ class DatabaseStorageTest extends BaseTestClass
         $this->assertTrue($provider->export());
         file_put_contents($provider->filename(), $provider->getWriterContent());
         $firstRow = $this->getNthRowFrom($provider->filename());
-        $this->assertTrue(6 === count($firstRow), 'Matching count for first row');
+        $this->assertCount(6, $firstRow, 'Matching count for first row');
     }
 
     public function testExceptionIsReceivedByMethod () {
@@ -507,7 +507,7 @@ class DatabaseStorageTest extends BaseTestClass
 
         // false for exit on failure will return true
         $this->assertTrue($this->getUserProvider()->export());
-        $this->assertTrue(BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER == 4);
+        $this->assertSame(4, BaseDatabaseStorageProvider::$HANDLED_EXCEPTION_COUNTER);
     }
 
     public function testAddHeaderToCsv () {
@@ -519,8 +519,8 @@ class DatabaseStorageTest extends BaseTestClass
 
         $firstRow = $this->getNthRowFrom($provider->filename());
         $secondRow = $this->getNthRowFrom($provider->filename(), 2);
-        $this->assertTrue($firstRow == $headers);
-        $this->assertTrue(3 === count($secondRow));
+        $this->assertSame($firstRow, $headers);
+        $this->assertCount(3, $secondRow);
     }
 
     public function testAddCustomHeaderToCsv () {
@@ -537,8 +537,8 @@ class DatabaseStorageTest extends BaseTestClass
 
         $firstRow = $this->getNthRowFrom($provider->filename(), 1);
         $secondRow = $this->getNthRowFrom($provider->filename(), 2);
-        $this->assertTrue($firstRow == array_values($headers));
-        $this->assertTrue(4 === count($secondRow));
+        $this->assertSame($firstRow, array_values($headers));
+        $this->assertCount(4, $secondRow);
     }
 
     public function testAddExtraColumnThatDoesNotExistInDatabase () {
@@ -561,8 +561,8 @@ class DatabaseStorageTest extends BaseTestClass
 
         $firstRow = $this->getNthRowFrom($provider->filename(), 1);
         $secondRow = $this->getNthRowFrom($provider->filename(), 2);
-        $this->assertTrue($firstRow == array_values($headers));
-        $this->assertTrue(5 === count($secondRow));
+        $this->assertSame($firstRow, array_values($headers));
+        $this->assertCount(5, $secondRow);
     }
 
     public function testFilterWhenHeaderIsNotPresent () {
@@ -576,7 +576,7 @@ class DatabaseStorageTest extends BaseTestClass
 
         $this->assertTrue($provider->export());
 
-        $this->assertTrue(2 === count($this->getNthRowFrom($provider->filename())));
+        $this->assertCount(2, $this->getNthRowFrom($provider->filename()));
     }
 
     public function testLimitingDatabaseQueryPerBatch () {
@@ -587,7 +587,7 @@ class DatabaseStorageTest extends BaseTestClass
             ++$processedBatch;
         });
         $this->getUserProvider()->export();
-        $this->assertTrue($processedBatch == 7);
+        $this->assertSame(7, $processedBatch);
     }
 
     public function testUseDatabaseCursorForPullingData () {
@@ -634,7 +634,7 @@ class DatabaseStorageTest extends BaseTestClass
             return Carbon::createFromFormat('Y-m-d H:i:s', $item['created_at'])->diffInDays(Carbon::now()) >= $diff;
         });
 
-        $this->assertTrue(count($acceptableRows) == $rowsPicked);
+        $this->assertCount($rowsPicked, $acceptableRows);
     }
 
     public function testOrderByWithDirection () {
@@ -665,7 +665,7 @@ class DatabaseStorageTest extends BaseTestClass
         });
         $result = $provider->export();
         $this->assertTrue($result);
-        $this->assertTrue(20 == $rowCount);
+        $this->assertSame(20, $rowCount);
     }
 
     public function testColumnMethodPullsOnlySpecificFields () {
@@ -678,7 +678,7 @@ class DatabaseStorageTest extends BaseTestClass
         $provider = $this->getUserProvider();
 
         $this->assertTrue($provider->export());
-        $this->assertTrue(3 == count($this->getNthRowFrom($provider->filename())));
+        $this->assertCount(3, $this->getNthRowFrom($provider->filename()));
     }
 
     public function testJoinFunction () {
@@ -750,10 +750,10 @@ class DatabaseStorageTest extends BaseTestClass
         });
         $this->assertTrue($provider->export());
 
-        $this->assertTrue($rowsPicked == $data['details_count']);
+        $this->assertSame($rowsPicked, $data['details_count']);
         $nthRow = $this->getNthRowFrom($provider->filename(), 2);
-        $this->assertTrue(count($nthRow) == 7);
-        $this->assertTrue(strpos($this->getNthRowFrom($provider->filename(), 2)[5], 'Category -') === 0);
+        $this->assertCount(7, $nthRow);
+        $this->assertStringStartsWith('Category -', $this->getNthRowFrom($provider->filename(), 2)[5]);
     }
 
     public function testQueryBuilderFunction () {
@@ -822,17 +822,17 @@ class DatabaseStorageTest extends BaseTestClass
             }
         }
 
-        $this->assertTrue($rowsPicked == count($validOrders));
+        $this->assertCount($rowsPicked, $validOrders);
 
         $thirdRow = $this->getNthRowFrom($provider->filename(), 3);
-        $this->assertTrue(strpos($thirdRow[2], 'Product -') === 0);
-        $this->assertTrue(strpos($thirdRow[5], 'Category -') === 0);
+        $this->assertStringStartsWith('Product -', $thirdRow[2]);
+        $this->assertStringStartsWith('Category -', $thirdRow[5]);
 
         // build header, if the header contains space then it should be enclosed with the enclose character
         $stringHeader = implode(',', array_map(function ($column) {
             return strpos($column, ' ') !== false ? sprintf('"%s"', $column) : $column;
         }, $headers));
 
-        $this->assertTrue(trim($this->getNthStringLineFrom($provider->filename())) == $stringHeader);
+        $this->assertSame($stringHeader, trim($this->getNthStringLineFrom($provider->filename())));
     }
 }

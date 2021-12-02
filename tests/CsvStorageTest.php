@@ -210,7 +210,7 @@ class CsvStorageTest extends BaseTestClass
         $this->assertTrue($this->dispatcher->until('test-true', 'test-true'));
         $this->assertTrue($this->dispatcher->until('test-count', [ 1, true, 'false' ]));
         $this->assertFalse($this->dispatcher->until('test-count'));
-        $this->assertTrue(is_null($this->dispatcher->until('no-event-listener')));
+        $this->assertNull($this->dispatcher->until('no-event-listener'));
     }
 
     public function testProvidingEventDispatcherFromOutside () {
@@ -224,7 +224,7 @@ class CsvStorageTest extends BaseTestClass
         // call the import method to start execution
         $result = $company->import();
 
-        $this->assertTrue(false === $result);
+        $this->assertFalse($result);
     }
 
     public function testCheckIfEventsAreFired () {
@@ -242,7 +242,7 @@ class CsvStorageTest extends BaseTestClass
         // call the import method to start execution
         $result = $this->getCompanyProvider()->import();
 
-        $this->assertTrue(false === $result);
+        $this->assertFalse($result);
         $this->assertTrue($received);
     }
 
@@ -263,7 +263,7 @@ class CsvStorageTest extends BaseTestClass
         // call the import method to start execution
         $result = $this->getCompanyProvider()->import();
 
-        $this->assertTrue(false === $result);
+        $this->assertFalse($result);
         $this->assertTrue($receivedNewType);
     }
 
@@ -305,7 +305,7 @@ class CsvStorageTest extends BaseTestClass
         $result = $this->getCompanyProvider()->import();
         $this->assertTrue($result);
 
-        $this->assertTrue(Manager::table($table)->count() == $count);
+        $this->assertSame($count, Manager::table($table)->count());
         $this->rollbackMigration('default', 'company');
     }
 
@@ -328,7 +328,7 @@ class CsvStorageTest extends BaseTestClass
             ];
         })->import();
 
-        $this->assertTrue(Manager::table('companies')->count() == $count);
+        $this->assertSame($count, Manager::table('companies')->count());
     }
 
     public function testStreamFilters () {
@@ -345,7 +345,7 @@ class CsvStorageTest extends BaseTestClass
             ];
         })->import();
 
-        $this->assertTrue(Manager::table('companies')->find(1)->name == strtoupper($data[1][0]));
+        $this->assertSame(strtoupper($data[1][0]), Manager::table('companies')->find(1)->name);
     }
 
     public function testFileOpenMode () {
@@ -382,7 +382,7 @@ class CsvStorageTest extends BaseTestClass
         $this->generateCompaniesData([ 'empty_line' => true, 'modulo' => 9 ]);
 
         $this->getCompanyProvider()->import();
-        $this->assertTrue(BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER == 0);
+        $this->assertSame(0, BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER);
     }
 
     public function testExceptionIsReceivedByMethod () {
@@ -390,7 +390,7 @@ class CsvStorageTest extends BaseTestClass
         BaseCsvStorageProvider::$SKIP_EMPTY = false;
 
         $this->getCompanyProvider()->import();
-        $this->assertTrue(BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER > 0);
+        $this->assertGreaterThan(0, BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER);
     }
 
     public function testDoesNotExitOnFailureIfFalse () {
@@ -400,7 +400,7 @@ class CsvStorageTest extends BaseTestClass
 
         // false for exit on failure will return true
         $this->assertTrue($this->getCompanyProvider()->import());
-        $this->assertTrue(BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER == 2);
+        $this->assertSame(2, BaseCsvStorageProvider::$HANDLED_EXCEPTION_COUNTER);
     }
 
     public function testExcludeCsvHeaderDealingWithProvidedHeader () {
@@ -414,7 +414,7 @@ class CsvStorageTest extends BaseTestClass
             ];
         })->import();
 
-        $this->assertTrue(Manager::table('companies')->count() == $count + 1);
+        $this->assertSame($count + 1, Manager::table('companies')->count());
     }
 
     public function testExcludeCsvHeaderDealingZeroBasedIndex () {
@@ -431,7 +431,7 @@ class CsvStorageTest extends BaseTestClass
             return [];
         })->import();
 
-        $this->assertTrue(Manager::table('companies')->count() == $count + 1);
+        $this->assertSame($count + 1, Manager::table('companies')->count());
     }
 
     public function testCustomHeader () {
@@ -460,7 +460,7 @@ class CsvStorageTest extends BaseTestClass
             ++$processedBatch;
         });
         $this->getCompanyProvider()->import();
-        $this->assertTrue($processedBatch == 7);
+        $this->assertSame(7, $processedBatch);
     }
 
     public function testDoNotUseDatabaseTransaction () {
@@ -471,7 +471,7 @@ class CsvStorageTest extends BaseTestClass
 
         $result = $this->getCompanyProvider()->import();
         $this->assertFalse($result);
-        $this->assertTrue(10 == Manager::table('companies')->count());
+        $this->assertSame(10, Manager::table('companies')->count());
     }
 
     public function testDatabaseTransactionNoInsertionOnFailure () {
@@ -479,7 +479,7 @@ class CsvStorageTest extends BaseTestClass
         BaseCsvStorageProvider::$SKIP_EMPTY = false;
 
         $this->getCompanyProvider()->import();
-        $this->assertTrue(0 == Manager::table('companies')->count());
+        $this->assertSame(0, Manager::table('companies')->count());
     }
 
     public function testMultipleTableEntries () {
@@ -515,9 +515,9 @@ class CsvStorageTest extends BaseTestClass
             ];
         })->import();
 
-        $this->assertTrue(Manager::table('members')->count() == 20);
-        $this->assertTrue(Manager::table('phones')->count() == 20);
-        $this->assertTrue(Manager::table('emails')->count() == 20);
+        $this->assertSame(20, Manager::table('members')->count());
+        $this->assertSame(20, Manager::table('phones')->count());
+        $this->assertSame(20, Manager::table('emails')->count());
     }
 
     public function testMultipleTableEntriesCheckingDuplicateBeforeEntry () {
@@ -566,8 +566,8 @@ class CsvStorageTest extends BaseTestClass
             ];
         })->import();
 
-        $this->assertTrue(Manager::table('members')->count() == 50);
-        $this->assertTrue(Manager::table('phones')->count() == 55);
-        $this->assertTrue(Manager::table('emails')->count() == 55);
+        $this->assertSame(50, Manager::table('members')->count());
+        $this->assertSame(55, Manager::table('phones')->count());
+        $this->assertSame(55, Manager::table('emails')->count());
     }
 }
